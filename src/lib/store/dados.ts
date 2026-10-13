@@ -1,13 +1,22 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import type { BancoMock } from "@/types";
-import { gerarSeed } from "@/lib/mock/seed";
+import { gerarSeed, dataFortaleza, VERSAO_SEED } from "@/lib/mock/seed";
 import { sincronizarAbas } from "./sync";
 
 export type DadosState = BancoMock & {
-  /** Restaura o banco mock ao seed determinístico. */
+  /** Data (YYYY-MM-DD, São Luís) em que o seed atual foi gerado. */
+  dataAncora: string;
+  /** Versão do gerador do seed (invalida o cache quando muda). */
+  versaoSeed: number;
+  /** Regenera o banco para "agora". */
   resetarDemo: () => void;
 };
+
+// Âncora FIXA só para o estado inicial (servidor + primeiro render do cliente),
+// garantindo HTML idêntico nos dois. A re-hidratação pós-montagem (useHidratado)
+// troca por "hoje" real quando a data/versão não bate (ver cacheInvalido).
+const ANCORA_FIXA = new Date("2026-10-13T12:00:00-03:00");
 
 const storage: StateStorage = {
   getItem: (k) => (typeof window !== "undefined" ? window.localStorage.getItem(k) : null),
@@ -22,15 +31,25 @@ const storage: StateStorage = {
 export const useDadosStore = create<DadosState>()(
   persist(
     (set) => ({
-      ...gerarSeed(),
-      resetarDemo: () => set({ ...gerarSeed() }),
+      ...gerarSeed(ANCORA_FIXA),
+      dataAncora: dataFortaleza(ANCORA_FIXA),
+      versaoSeed: VERSAO_SEED,
+      resetarDemo: () => {
+        const agora = new Date();
+        set({
+          ...gerarSeed(agora),
+          dataAncora: dataFortaleza(agora),
+          versaoSeed: VERSAO_SEED,
+        });
+      },
     }),
     {
       name: "cereja-dados",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => storage),
-      // Persistir só os dados (não as funções nem a flag).
-      partialize: (s): BancoMock => ({
+      partialize: (s) => ({
+        dataAncora: s.dataAncora,
+        versaoSeed: s.versaoSeed,
         lojas: s.lojas,
         usuarios: s.usuarios,
         categorias: s.categorias,
@@ -51,7 +70,7 @@ export const useDadosStore = create<DadosState>()(
       }),
       // Não hidratar no create() (seria síncrono, antes do render do React, e
       // causaria mismatch). A re-hidratação acontece pós-montagem no hook
-      // useHidratado. Ver docs/NEXT16-NOTES.md.
+      // useHidratado. Ver docs/NEXT16-NOTES.md e docs/DECISOES.md (D1.1).
       skipHydration: true,
     },
   ),

@@ -68,6 +68,23 @@ Revisão adversarial (workflow) encontrou e corrigimos: hidratação dos stores
 comparação cruzada descontos×cancelamentos e redação do score de risco em
 `lib/domain/auditoria.ts`.
 
+### D1.4 — Âncora relativa a "hoje" + política de cache
+`gerarSeed(agora)` ancora os 30 dias em **hoje** (São Luís): os 29 dias
+anteriores + o dia corrente (índice 29). Os **valores** são determinísticos por
+índice de dia (RNG com semente fixa), e o padrão também depende do **dia da
+semana real** da data. O dia de hoje é **parcial**: só gera comandas até o
+horário atual (o painel nunca mostra vendas no futuro). As anomalias plantadas
+ficam sempre nos últimos 7 dias (contagem da carne = ontem; caixa −R$ 37 = 3
+dias atrás).
+
+O estado persistido guarda `dataAncora` (YYYY-MM-DD, São Luís) e `versaoSeed`.
+Ao montar, `useHidratado` re-hidrata e, se `cacheInvalido` (virou o dia ou a
+versão mudou), **regenera o seed para hoje**. **Escolha: reset total** — as
+ações do dia anterior não são preservadas (mais simples; dentro do mesmo dia as
+ações do usuário persistem normalmente entre recarregamentos). Para o estado
+inicial (SSR + 1º render), o store usa uma **âncora fixa** só para servidor e
+cliente baterem; a troca para "hoje" real acontece pós-montagem.
+
 ### D0.7 — Imagens de fallback
 Sem o logo e as fotos reais ainda, usamos a marca SVG própria e 7 fotos de banco
 livre (Unsplash) baixadas para `public/images`. Créditos em

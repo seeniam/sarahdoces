@@ -34,15 +34,49 @@ import {
   USUARIOS,
 } from "./data";
 
-/** São Luís/MA não tem horário de verão → offset fixo. */
+/** São Luís usa o mesmo fuso de Fortaleza (UTC-3, sem horário de verão). */
+export const TZ = "America/Fortaleza";
 const TZ_OFFSET = "-03:00";
-/** "Hoje" fixo da demo (21h em São Luís). Sempre o mesmo instante, em qualquer fuso. */
-export const DATA_REFERENCIA = new Date(`2026-10-13T21:00:00${TZ_OFFSET}`);
 const DIAS = 30;
 const SEED = 42;
-/** Âncora de calendário: meia-noite UTC do dia de referência (13/10/2026). */
-const REF_UTC = Date.UTC(2026, 9, 13);
+/** Bump invalida o cache persistido (força re-seed). */
+export const VERSAO_SEED = 2;
 const pad = (n: number) => String(n).padStart(2, "0");
+
+/** Data de hoje (YYYY-MM-DD) no fuso de São Luís. */
+export function dataFortaleza(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(d);
+}
+
+/** Relógio de parede (ano/mês/dia/hora/minuto) em São Luís para um instante. */
+function relogioFortaleza(d: Date) {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  const num = (t: string) => Number(p.find((x) => x.type === t)!.value);
+  return {
+    ano: num("year"),
+    mes: num("month"),
+    dia: num("day"),
+    hora: num("hour"),
+    minuto: num("minute"),
+  };
+}
+
+/** O cache persistido vira inválido quando a versão muda ou quando vira o dia. */
+export function cacheInvalido(
+  dataAncoraSalva: string | undefined,
+  versaoSalva: number | undefined,
+  agora: Date,
+): boolean {
+  return versaoSalva !== VERSAO_SEED || dataAncoraSalva !== dataFortaleza(agora);
+}
 
 const ATENDENTES_LOJA: Record<LojaId, UsuarioId[]> = {
   "loja-1": ["u-larissa", "u-thiago"],
@@ -97,27 +131,6 @@ const FORNECEDOR_CATS: Record<Fornecedor, string[]> = {
   Atacadão: ["graos", "confeitaria"],
 };
 
-/** Calendário (ano/mês/dia) do dia `offset`, contando para trás da referência. */
-function diaCalendario(offset: number): { ano: number; mes: number; dia: number } {
-  const d = new Date(REF_UTC);
-  d.setUTCDate(d.getUTCDate() - (DIAS - 1 - offset));
-  return { ano: d.getUTCFullYear(), mes: d.getUTCMonth() + 1, dia: d.getUTCDate() };
-}
-
-/** Instante ISO (UTC) de uma hora local de São Luís — determinístico (offset explícito). */
-function dataNoDia(offset: number, hora: number, minuto: number): string {
-  const { ano, mes, dia } = diaCalendario(offset);
-  return new Date(
-    `${ano}-${pad(mes)}-${pad(dia)}T${pad(hora)}:${pad(minuto)}:00${TZ_OFFSET}`,
-  ).toISOString();
-}
-
-function ehFimDeSemana(offset: number): boolean {
-  const { ano, mes, dia } = diaCalendario(offset);
-  const d = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
-  return d === 0 || d === 6;
-}
-
 function poolDoHorario(hora: number): [string, number][] {
   if (hora <= 10) return POOL_MANHA;
   if (hora <= 14) return POOL_ALMOCO;
@@ -125,8 +138,32 @@ function poolDoHorario(hora: number): [string, number][] {
   return POOL_NOITE;
 }
 
-export function gerarSeed(): BancoMock {
+export function gerarSeed(agora: Date = new Date()): BancoMock {
   const rng = criarRng(SEED);
+
+  // Âncora = HOJE (São Luís). Os 30 dias são os 29 anteriores + hoje (índice 29).
+  const rel = relogioFortaleza(agora);
+  const ancoraUTC = Date.UTC(rel.ano, rel.mes - 1, rel.dia);
+  const minutosAgora = rel.hora * 60 + rel.minuto;
+
+  // Calendário (ano/mês/dia) do dia `offset` (0 = há 29 dias, 29 = hoje).
+  const diaCalendario = (offset: number) => {
+    const d = new Date(ancoraUTC);
+    d.setUTCDate(d.getUTCDate() - (DIAS - 1 - offset));
+    return { ano: d.getUTCFullYear(), mes: d.getUTCMonth() + 1, dia: d.getUTCDate() };
+  };
+  // Instante ISO (UTC) de uma hora local de São Luís — independe do fuso do host.
+  const dataNoDia = (offset: number, hora: number, minuto: number) => {
+    const { ano, mes, dia } = diaCalendario(offset);
+    return new Date(
+      `${ano}-${pad(mes)}-${pad(dia)}T${pad(hora)}:${pad(minuto)}:00${TZ_OFFSET}`,
+    ).toISOString();
+  };
+  const ehFimDeSemana = (offset: number) => {
+    const { ano, mes, dia } = diaCalendario(offset);
+    const w = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
+    return w === 0 || w === 6;
+  };
 
   const comandas: Comanda[] = [];
   const pagamentos: Pagamento[] = [];
@@ -156,6 +193,8 @@ export function gerarSeed(): BancoMock {
       for (let n = 0; n < qtd; n++) {
         const hora = rng.pickPonderado(HORAS, PESOS_HORA);
         const minuto = rng.int(0, 59);
+        // Hoje é parcial: nada depois do horário atual (painel nunca vê o futuro).
+        if (hoje && hora * 60 + minuto > minutosAgora) continue;
         const atendenteId = rng.pick(atendentes);
 
         // Itens
@@ -211,9 +250,10 @@ export function gerarSeed(): BancoMock {
         const prontaEm = dataNoDia(offset, hora, Math.min(59, minuto + 8));
         const pagaEm = dataNoDia(offset, hora, Math.min(59, minuto + 12));
 
+        // Comandas de hoje próximas do "agora" ainda estão em andamento (KDS).
         let status: StatusComanda = "paga";
         if (cancelada) status = "cancelada";
-        else if (hoje && hora >= 19)
+        else if (hoje && hora * 60 + minuto >= minutosAgora - 90)
           status = rng.pick(["enviada", "preparando", "pronta"]);
 
         const id = `cmd-${(++seqComanda).toString().padStart(5, "0")}`;
@@ -548,10 +588,14 @@ export function gerarSeed(): BancoMock {
       descricao,
       categoria,
       valor,
-      vencimento: new Date(`2026-10-${pad(diaVenc)}T00:00:00${TZ_OFFSET}`).toISOString(),
+      vencimento: new Date(
+        `${rel.ano}-${pad(rel.mes)}-${pad(diaVenc)}T00:00:00${TZ_OFFSET}`,
+      ).toISOString(),
       pagoEm:
-        diaVenc < 13
-          ? new Date(`2026-10-${pad(diaVenc)}T10:00:00${TZ_OFFSET}`).toISOString()
+        diaVenc < rel.dia
+          ? new Date(
+              `${rel.ano}-${pad(rel.mes)}-${pad(diaVenc)}T10:00:00${TZ_OFFSET}`,
+            ).toISOString()
           : undefined,
     });
   });
@@ -563,7 +607,7 @@ export function gerarSeed(): BancoMock {
   const clientesEnc = ["Dona Fátima", "Léo (aniversário)", "Escritório Alfa", "Vânia", "Cléo"];
   clientesEnc.forEach((cliente, i) => {
     const offsetEntrega = i - 1; // alguns futuros, alguns passados
-    const cal = new Date(REF_UTC);
+    const cal = new Date(ancoraUTC);
     cal.setUTCDate(cal.getUTCDate() + offsetEntrega * 2);
     const dataEntrega = new Date(
       `${cal.getUTCFullYear()}-${pad(cal.getUTCMonth() + 1)}-${pad(cal.getUTCDate())}T15:00:00${TZ_OFFSET}`,
@@ -607,7 +651,7 @@ export function gerarSeed(): BancoMock {
   };
 }
 
-/** Restaura o banco mock ao estado inicial (seed determinístico). */
-export function resetarDemo(): BancoMock {
-  return gerarSeed();
+/** Restaura o banco mock ao estado inicial (seed determinístico para `agora`). */
+export function resetarDemo(agora: Date = new Date()): BancoMock {
+  return gerarSeed(agora);
 }
