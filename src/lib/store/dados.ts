@@ -1,7 +1,16 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
-import type { BancoMock } from "@/types";
+import type {
+  BancoMock,
+  Comanda,
+  EventoAuditoria,
+  Pagamento,
+  SessaoCaixa,
+  StatusComanda,
+} from "@/types";
 import { gerarSeed, dataFortaleza, VERSAO_SEED } from "@/lib/mock/seed";
+import { baixarEstoquePorComanda } from "@/lib/domain/estoque";
+import { FICHA_POR_PRODUTO } from "@/lib/mock/data";
 import { sincronizarAbas } from "./sync";
 
 export type DadosState = BancoMock & {
@@ -11,6 +20,18 @@ export type DadosState = BancoMock & {
   versaoSeed: number;
   /** Regenera o banco para "agora". */
   resetarDemo: () => void;
+
+  // ---- Mutações de runtime (ações do usuário na demo) ----
+  /** Cria a comanda (enviada à cozinha) e baixa o estoque pela ficha técnica. */
+  enviarComanda: (comanda: Comanda) => void;
+  /** Avança o status de uma comanda (KDS). */
+  avancarStatusComanda: (comandaId: string, status: StatusComanda) => void;
+  /** Registra pagamento(s) e marca a comanda como paga. */
+  registrarPagamento: (pagamentos: Pagamento[]) => void;
+  /** Abre uma sessão de caixa. */
+  abrirCaixa: (sessao: SessaoCaixa) => void;
+  /** Acrescenta um evento de auditoria. */
+  adicionarEvento: (evento: EventoAuditoria) => void;
 };
 
 // Âncora FIXA só para o estado inicial (servidor + primeiro render do cliente),
@@ -42,6 +63,37 @@ export const useDadosStore = create<DadosState>()(
           versaoSeed: VERSAO_SEED,
         });
       },
+
+      enviarComanda: (comanda) =>
+        set((s) => ({
+          comandas: [...s.comandas, comanda],
+          estoque: baixarEstoquePorComanda(s.estoque, comanda, FICHA_POR_PRODUTO),
+        })),
+
+      avancarStatusComanda: (comandaId, status) =>
+        set((s) => ({
+          comandas: s.comandas.map((c) =>
+            c.id === comandaId ? { ...c, status } : c,
+          ),
+        })),
+
+      registrarPagamento: (pagamentos) =>
+        set((s) => {
+          const comandaId = pagamentos[0]?.comandaId;
+          const pagaEm = pagamentos[0]?.data;
+          return {
+            pagamentos: [...s.pagamentos, ...pagamentos],
+            comandas: s.comandas.map((c) =>
+              c.id === comandaId ? { ...c, status: "paga", pagaEm } : c,
+            ),
+          };
+        }),
+
+      abrirCaixa: (sessao) =>
+        set((s) => ({ sessoesCaixa: [...s.sessoesCaixa, sessao] })),
+
+      adicionarEvento: (evento) =>
+        set((s) => ({ eventos: [...s.eventos, evento] })),
     }),
     {
       name: "cereja-dados",

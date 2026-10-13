@@ -202,6 +202,31 @@
   }
 }
 
+/* Impressão: só a comanda térmica, em 80mm. */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  .ticket-print,
+  .ticket-print * {
+    visibility: visible !important;
+  }
+  .ticket-print {
+    position: absolute !important;
+    inset: 0 auto auto 0;
+    width: 72mm !important;
+    box-shadow: none !important;
+  }
+}
+
 @layer utilities {
   /* Borda serrilhada de cupom (recortes semicirculares embaixo) */
   .serrilha-baixo {

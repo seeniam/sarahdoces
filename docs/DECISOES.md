@@ -103,6 +103,27 @@ Sem sharp, a otimização AVIF do next/image degradava (herói do login saía
 borrado/pequeno). Habilitado `sharp` (a Vercel também o usa em produção). O
 herói tem `placeholder="blur"` para aparecer instantâneo.
 
+## Fase 3 — PDV e comanda térmica
+
+### D3.1 — Comanda em edição (carrinho) em store próprio, não persistido
+`useComandaStore` guarda a comanda sendo montada (tipo, identificador, itens,
+desconto). É transitório — não persiste (recarregar limpa o rascunho; as
+comandas ENVIADAS ficam no `useDadosStore`). Mutações de runtime (enviar
+comanda + baixa de estoque, pagamento, abrir caixa, evento) ficam em ações do
+`useDadosStore`.
+
+### D3.2 — Autorização por PIN: desconto/cortesia (carrinho) e cancelar comanda
+No carrinho, editar +/−/remover é livre (é rascunho). O que exige PIN de
+gerente/dona + motivo e gera EventoAuditoria é **Desconto/Cortesia** (vetor de
+fraude de preço) — e o cancelamento de uma comanda já ENVIADA (Fase 8). O PIN de
+atendente é recusado (demonstra "desconto sem PIN"). Preço nunca é editável.
+
+### D3.3 — Impressão da comanda (80mm)
+`components/print/TicketTermico.tsx` tem a classe `ticket-print`, isolada pelo
+CSS `@media print` (@page 80mm). O "momento" (comanda saindo impressa) é um
+clip-path de ~700ms, respeitando prefers-reduced-motion. O `window.print()`
+imprime só o cupom.
+
 ### D0.7 — Imagens de fallback
 Sem o logo e as fotos reais ainda, usamos a marca SVG própria e 7 fotos de banco
 livre (Unsplash) baixadas para `public/images`. Créditos em
