@@ -11,14 +11,16 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:4319",
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // Porta 4319 (as 3000/3100 podem estar ocupadas). Reaproveita um `next start`
+  // já rodando; senão sobe um (precisa de `pnpm build` antes).
   webServer: {
-    command: "pnpm build && pnpm start",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    command: "pnpm exec next start -p 4319",
+    url: "http://localhost:4319",
+    reuseExistingServer: true,
     timeout: 180_000,
   },
 });

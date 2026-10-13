@@ -26,9 +26,19 @@ export default function Home() {
             completa chega nas próximas fases.
           </p>
         </div>
-        <Button size="lg" render={<Link href="/design-system" />}>
-          Ver o sistema de design
-        </Button>
+        <div className="flex flex-col items-center gap-3">
+          <Button size="lg" className="h-12 px-8 text-base" render={<Link href="/login" />}>
+            Entrar na demonstração
+          </Button>
+          <Button
+            variant="link"
+            size="sm"
+            className="text-muted-foreground"
+            render={<Link href="/design-system" />}
+          >
+            Ver o sistema de design
+          </Button>
+        </div>
       </div>
     </main>
   );

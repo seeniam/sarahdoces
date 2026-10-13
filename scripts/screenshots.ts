@@ -19,13 +19,17 @@ function arg(nome: string, padrao: string): string {
 
 const fase = arg("phase", "0");
 const base = arg("base", "http://localhost:3000").replace(/\/$/, "");
-// "home" é um apelido para "/" — evita a conversão de caminho do MSYS/Git Bash,
-// que transforma um "/" solto em caminho do Windows.
-const rotas = arg("routes", "home,/design-system")
+// Passe rotas sem a barra inicial (ex.: "login,painel") para evitar a conversão
+// de caminho do MSYS/Git Bash. "home" é apelido de "/".
+const rotas = arg("routes", "home,design-system")
   .split(",")
   .map((r) => r.trim())
   .filter(Boolean)
-  .map((r) => (r === "home" || r === "" ? "/" : r));
+  .map((r) => (r === "home" || r === "" ? "/" : r.startsWith("/") ? r : `/${r}`));
+
+/** Opcional: injeta uma sessão (usuarioId) para fotografar o layout logado. */
+const sessaoUsuario = arg("sessao", "");
+const sessaoLoja = arg("loja", "todas");
 
 const viewports = [
   { nome: "390", largura: 390, altura: 844 },
@@ -58,12 +62,25 @@ async function main() {
             localStorage.setItem("cereja-tema", t === "escuro" ? "dark" : "light");
           } catch {}
         }, tema);
+        if (sessaoUsuario) {
+          await contexto.addInitScript(
+            ({ usuarioId, lojaAtiva }) => {
+              try {
+                localStorage.setItem(
+                  "cereja-sessao",
+                  JSON.stringify({ state: { usuarioId, lojaAtiva }, version: 1 }),
+                );
+              } catch {}
+            },
+            { usuarioId: sessaoUsuario, lojaAtiva: sessaoLoja },
+          );
+        }
 
         const pagina = await contexto.newPage();
         const url = `${base}${rota}`;
         try {
           await pagina.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
-          await pagina.waitForTimeout(500);
+          await pagina.waitForTimeout(900);
           const arquivo = path.join(
             destino,
             `${slug(rota)}__${vp.nome}__${tema}.png`,

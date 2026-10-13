@@ -85,6 +85,24 @@ ações do usuário persistem normalmente entre recarregamentos). Para o estado
 inicial (SSR + 1º render), o store usa uma **âncora fixa** só para servidor e
 cliente baterem; a troca para "hoje" real acontece pós-montagem.
 
+## Fase 2 — Login, layout e navegação
+
+### D2.1 — Cozinha fora do grupo com sidebar
+A tela cheia `/cozinha` (KDS) fica em `app/cozinha/` (fora do grupo `(app)`),
+então usa só o layout raiz — sem sidebar/topbar. O grupo `(app)` tem a sidebar
+cacau + topbar; o `(auth)/login` usa só o layout raiz.
+
+### D2.2 — Guarda de rotas no cliente (AppShell)
+Sem backend, a guarda é client-side: `AppShell` usa `useHidratado` (não pisca),
+lê a sessão e, se não houver usuário → `/login`; se o perfil não pode acessar a
+rota → `rotaInicial(perfil)`. Enquanto hidrata/redireciona, mostra skeleton.
+Mapa de permissões por perfil em `lib/auth/navegacao.ts` (PRD §4).
+
+### D2.3 — sharp habilitado para otimização de imagem
+Sem sharp, a otimização AVIF do next/image degradava (herói do login saía
+borrado/pequeno). Habilitado `sharp` (a Vercel também o usa em produção). O
+herói tem `placeholder="blur"` para aparecer instantâneo.
+
 ### D0.7 — Imagens de fallback
 Sem o logo e as fotos reais ainda, usamos a marca SVG própria e 7 fotos de banco
 livre (Unsplash) baixadas para `public/images`. Créditos em
