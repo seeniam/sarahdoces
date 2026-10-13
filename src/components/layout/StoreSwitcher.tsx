@@ -23,9 +23,13 @@ export function StoreSwitcher({ perfil }: { perfil: Perfil }) {
 
   const podeTodas = perfil === "dona" || perfil === "gerente";
 
+  // Nome curto: "Loja 1 — Centro" → "Centro".
+  const curto = (nome: string) =>
+    nome.includes("—") ? nome.split("—")[1].trim() : nome;
+
   const opcoes: { id: LojaAtiva; nome: string }[] = [
-    ...(podeTodas ? [{ id: "todas" as const, nome: "Todas as lojas" }] : []),
-    ...lojas.map((l) => ({ id: l.id as LojaAtiva, nome: l.nome })),
+    ...(podeTodas ? [{ id: "todas" as const, nome: "Todas" }] : []),
+    ...lojas.map((l) => ({ id: l.id as LojaAtiva, nome: curto(l.nome) })),
   ];
 
   const atual = opcoes.find((o) => o.id === lojaAtiva) ?? opcoes[0];

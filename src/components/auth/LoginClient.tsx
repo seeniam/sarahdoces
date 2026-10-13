@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { cn } from "cn";
 import { Azulejo } from "@/components/brand/Azulejo";
 import { Logo } from "@/components/brand/Logo";
 import { BLUR_ESCURO } from "@/lib/brand/blur";
@@ -21,17 +22,29 @@ const ROTULO_PERFIL: Record<Perfil, string> = {
   cozinha: "Cozinha",
 };
 
-const COR_PERFIL: Record<Perfil, string> = {
-  dona: "var(--cereja)",
-  gerente: "var(--azulejo)",
-  cozinha: "var(--doce-de-leite)",
-  atendente: "var(--pistache)",
-};
-
 function lojaInicial(u: Usuario): LojaAtiva {
   if (u.perfil === "dona") return "todas";
   return u.lojaId ?? "loja-1";
 }
+
+/** Avatar neutro: açúcar + iniciais em cacau (Gloock). Sem cor por perfil. */
+function Avatar({ u, className }: { u: Usuario; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "grid shrink-0 place-items-center rounded-full bg-acucar font-display text-cacau dark:bg-popover dark:text-foreground",
+        className,
+      )}
+    >
+      {u.avatar}
+    </span>
+  );
+}
+
+const SARAH = USUARIOS.find((u) => u.perfil === "dona")!;
+const GESTAO = USUARIOS.filter((u) => u.perfil === "gerente");
+const ATENDIMENTO = USUARIOS.filter((u) => u.perfil === "atendente");
+const COZINHA = USUARIOS.filter((u) => u.perfil === "cozinha");
 
 export function LoginClient() {
   const router = useRouter();
@@ -57,6 +70,14 @@ export function LoginClient() {
     }
   }
 
+  function preencher() {
+    if (!selecionado) return;
+    const p = selecionado.pin;
+    for (let n = 1; n <= p.length; n++) {
+      setTimeout(() => aoDigitar(p.slice(0, n)), (n - 1) * 95);
+    }
+  }
+
   function escolher(u: Usuario) {
     setSelecionado(u);
     setPin("");
@@ -67,25 +88,28 @@ export function LoginClient() {
     <main className="flex min-h-dvh flex-col lg:flex-row">
       {/* Parede de azulejo + foto-herói + logo */}
       <div className="relative shrink-0 lg:w-[54%]">
-        {/* Desktop: parede inteira */}
         <div className="relative hidden h-full min-h-dvh lg:block">
           <Azulejo tom="azulejo" tile={92} className="absolute inset-0" />
           <div className="absolute inset-0 p-7">
             <div className="relative h-full w-full overflow-hidden rounded-[20px] shadow-raised">
               <Image
                 src="/images/hero.jpg"
-                alt="Salão da Sarah Rangel"
+                alt="Doces da Sarah Rangel"
                 fill
                 preload
                 placeholder="blur"
                 blurDataURL={BLUR_ESCURO}
                 sizes="55vw"
-                className="object-cover [filter:saturate(1.05)_contrast(1.03)]"
+                className="object-cover object-center [filter:saturate(1.05)_contrast(1.03)]"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1b100e]/90 via-[#1b100e]/25 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-9 text-white">
-                <Logo variante="completa" textClassName="text-white" />
-                <p className="mt-5 max-w-sm font-display text-[1.7rem] leading-tight">
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1b100e] via-[#1b100e]/55 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-9">
+                <Logo
+                  variante="completa"
+                  textClassName="text-white"
+                  taglineClassName="text-white/80"
+                />
+                <p className="mt-5 max-w-sm font-display text-[1.7rem] leading-tight text-white">
                   Cada pedido registrado, cada grama de carne contada.
                 </p>
               </div>
@@ -93,12 +117,14 @@ export function LoginClient() {
           </div>
         </div>
 
-        {/* Celular: faixa de azulejo no topo */}
+        {/* Celular: faixa de azulejo com o logo numa placa de porcelana */}
         <div className="relative h-32 overflow-hidden lg:hidden">
           <Azulejo tom="azulejo" tile={72} className="absolute inset-0" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
           <div className="absolute inset-x-0 bottom-3 flex justify-center">
-            <Logo variante="compacta" />
+            <div className="rounded-full bg-card px-4 py-2 shadow-soft">
+              <Logo variante="compacta" />
+            </div>
           </div>
         </div>
       </div>
@@ -114,42 +140,38 @@ export function LoginClient() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={semMovimento ? undefined : { opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
+                className="space-y-6"
               >
-                <h1 className="text-center font-display text-3xl text-foreground">
-                  Quem está entrando?
-                </h1>
-                <p className="mt-1 text-center text-sm text-muted-foreground">
-                  Toque no seu perfil para digitar o PIN.
-                </p>
-
-                <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {USUARIOS.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => escolher(u)}
-                      className="flex flex-col items-center gap-2 rounded-[14px] border border-border bg-card p-4 text-center shadow-soft transition-colors hover:bg-acucar/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                    >
-                      <span
-                        className="grid size-12 place-items-center rounded-full font-display text-base text-white"
-                        style={{ backgroundColor: COR_PERFIL[u.perfil] }}
-                      >
-                        {u.avatar}
-                      </span>
-                      <span className="text-sm font-semibold leading-tight text-foreground">
-                        {u.nome}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {ROTULO_PERFIL[u.perfil]}
-                      </span>
-                    </button>
-                  ))}
+                <div>
+                  <h1 className="font-display text-3xl text-foreground">
+                    Quem está entrando?
+                  </h1>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Toque no seu perfil para digitar o PIN.
+                  </p>
                 </div>
 
-                <p className="mt-8 text-center text-xs text-muted-foreground">
-                  PINs da demonstração — Dona 1234 · Gerente 2222 · Atendentes
-                  3333+ · Cozinha 4444
-                </p>
+                {/* Sarah em destaque (abre a demonstração) */}
+                <button
+                  type="button"
+                  onClick={() => escolher(SARAH)}
+                  className="flex min-h-[72px] w-full items-center gap-4 rounded-[16px] border border-border bg-card p-4 text-left shadow-soft transition-colors hover:bg-acucar/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <Avatar u={SARAH} className="size-14 text-lg" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-lg text-foreground">
+                      Entrar como Sarah
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Dona · vê as duas lojas
+                    </p>
+                  </div>
+                  <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+                </button>
+
+                <Grupo titulo="Gestão" usuarios={GESTAO} onPick={escolher} />
+                <Grupo titulo="Atendimento" usuarios={ATENDIMENTO} onPick={escolher} />
+                <Grupo titulo="Cozinha" usuarios={COZINHA} onPick={escolher} />
               </motion.div>
             ) : (
               <motion.div
@@ -169,38 +191,77 @@ export function LoginClient() {
                   Trocar perfil
                 </button>
 
-                <span
-                  className="grid size-16 place-items-center rounded-full font-display text-xl text-white"
-                  style={{ backgroundColor: COR_PERFIL[selecionado.perfil] }}
-                >
-                  {selecionado.avatar}
-                </span>
+                <Avatar u={selecionado} className="size-16 text-xl" />
                 <h2 className="mt-3 font-display text-2xl text-foreground">
                   {selecionado.nome}
                 </h2>
-                <p className="mb-7 text-sm text-muted-foreground">
+                <p className="mb-7 text-sm">
                   {erro ? (
                     <span className="font-medium text-alerta">
                       PIN incorreto. Tente de novo.
                     </span>
                   ) : (
-                    "Digite o PIN"
+                    <span className="text-muted-foreground">Digite o PIN</span>
                   )}
                 </p>
 
                 <PinPad value={pin} onChange={aoDigitar} erro={erro} />
 
-                <p className="mt-7 text-xs text-muted-foreground">
-                  Dica da demonstração: PIN{" "}
-                  <span className="font-semibold text-foreground tnum">
-                    {selecionado.pin}
+                <div className="mt-7 flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>
+                    PIN de demonstração:{" "}
+                    <span className="font-semibold text-foreground tnum">
+                      {selecionado.pin}
+                    </span>
                   </span>
-                </p>
+                  <button
+                    type="button"
+                    onClick={preencher}
+                    className="rounded-full border border-border bg-card px-3 py-1 font-medium text-foreground transition-colors hover:bg-acucar/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    Preencher
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </div>
     </main>
+  );
+}
+
+function Grupo({
+  titulo,
+  usuarios,
+  onPick,
+}: {
+  titulo: string;
+  usuarios: Usuario[];
+  onPick: (u: Usuario) => void;
+}) {
+  if (usuarios.length === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      <p className="px-1 text-[11px] font-medium text-muted-foreground">{titulo}</p>
+      <div className="space-y-1.5">
+        {usuarios.map((u) => (
+          <button
+            key={u.id}
+            type="button"
+            onClick={() => onPick(u)}
+            className="flex min-h-[56px] w-full items-center gap-3 rounded-[12px] border border-border bg-card px-3 text-left transition-colors hover:bg-acucar/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <Avatar u={u} className="size-10 text-sm" />
+            <span className="flex-1 text-sm font-medium text-foreground">
+              {u.nome}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {ROTULO_PERFIL[u.perfil]}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

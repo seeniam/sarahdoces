@@ -10,7 +10,7 @@ Fonte: Unsplash (https://unsplash.com/license).
 
 | Arquivo | Uso provisório | Origem |
 |---------|----------------|--------|
-| `hero.jpg` | Foto-herói (login/landing) | Unsplash photo-1445116572660 |
+| `hero.jpg` | Foto-herói (login/landing) — doces/bolo de pote | Unsplash photo-1488477181946 |
 | `produtos/cafe.jpg` | Café | Unsplash photo-1511920170033 |
 | `produtos/cuscuz-completo.jpg` | Cuscuz | Unsplash photo-1626200419199 |
 | `produtos/pf-carne.jpg` | PF de carne | Unsplash photo-1467003909585 |

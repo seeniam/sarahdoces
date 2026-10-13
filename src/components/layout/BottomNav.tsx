@@ -12,15 +12,20 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { itensDoPerfil, TITULOS_SECAO, type SecaoNav } from "@/lib/auth/navegacao";
+import {
+  BOTTOM_NAV,
+  itensDoPerfil,
+  TITULOS_SECAO,
+  type SecaoNav,
+} from "@/lib/auth/navegacao";
 import type { Usuario } from "@/types";
 
 export function BottomNav({ usuario }: { usuario: Usuario }) {
   const pathname = usePathname();
   const [aberto, setAberto] = useState(false);
   const itens = itensDoPerfil(usuario.perfil);
-  const primarios = itens.slice(0, 5);
-  const temMais = itens.length > 5;
+  const primarios = BOTTOM_NAV[usuario.perfil];
+  const temMais = itens.length > primarios.length;
   const secoes = ["operacao", "gestao", "admin"] as const;
 
   const ativo = (href: string) =>

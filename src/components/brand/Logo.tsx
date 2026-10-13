@@ -54,8 +54,10 @@ export interface LogoProps {
   /** Mostra "Café & Confeitaria Artesanal". */
   tagline?: boolean;
   className?: string;
-  /** Classe aplicada ao texto (ex.: cor sobre a sidebar). */
+  /** Classe aplicada ao nome (ex.: cor sobre a sidebar). */
   textClassName?: string;
+  /** Classe aplicada à linha "Café & Confeitaria Artesanal". */
+  taglineClassName?: string;
 }
 
 export function Logo({
@@ -63,6 +65,7 @@ export function Logo({
   tagline = true,
   className,
   textClassName,
+  taglineClassName,
 }: LogoProps) {
   if (variante === "marca") {
     return <CerejaMark className={cn("size-9", className)} />;
@@ -89,7 +92,12 @@ export function Logo({
           Sarah Rangel
         </span>
         {tagline && empilhado && (
-          <span className="mt-1 text-[11px] font-medium text-muted-foreground">
+          <span
+            className={cn(
+              "mt-1 text-[11px] font-medium text-muted-foreground",
+              taglineClassName,
+            )}
+          >
             Café &amp; Confeitaria Artesanal
           </span>
         )}

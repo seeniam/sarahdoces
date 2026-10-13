@@ -28,6 +28,7 @@ export function Sidebar({ usuario }: { usuario: Usuario }) {
     <aside
       className={cn(
         "relative hidden shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex",
+        "dark:border-r dark:border-white/[0.08]",
         recolhida ? "w-[76px]" : "w-64",
       )}
     >

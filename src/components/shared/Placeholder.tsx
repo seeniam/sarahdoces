@@ -1,8 +1,8 @@
-import { Azulejo } from "@/components/brand/Azulejo";
+import { EstadoVazio } from "./EstadoVazio";
 
 /**
- * Estado "em construção" com azulejo, para as telas que chegam nas próximas
- * fases. Tem personalidade — não é uma página em branco.
+ * Placeholder temporário das telas que chegam nas próximas fases.
+ * Usa o EstadoVazio definitivo (um azulejo grande + frase + nota da fase).
  */
 export function Placeholder({
   titulo,
@@ -14,15 +14,18 @@ export function Placeholder({
   fase?: string;
 }) {
   return (
-    <div className="relative grid min-h-[60vh] place-items-center overflow-hidden rounded-[20px] border border-border bg-card shadow-soft">
-      <Azulejo tom="cereja" opacity={0.07} tile={128} className="absolute inset-0" />
-      <div className="relative max-w-sm space-y-2 px-8 text-center">
-        <h1 className="font-display text-3xl text-foreground">{titulo}</h1>
-        <p className="text-sm text-muted-foreground">{descricao}</p>
-        {fase && (
-          <p className="pt-1 text-xs font-medium text-cereja">Chega na {fase}.</p>
-        )}
-      </div>
+    <div className="grid min-h-[60vh] place-items-center rounded-[20px] border border-border bg-card shadow-soft">
+      <EstadoVazio
+        titulo={titulo}
+        descricao={descricao}
+        acao={
+          fase ? (
+            <span className="rounded-full bg-acucar px-3 py-1 text-xs font-medium text-cereja-calda">
+              Chega na {fase}
+            </span>
+          ) : undefined
+        }
+      />
     </div>
   );
 }

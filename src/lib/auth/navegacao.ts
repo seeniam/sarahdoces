@@ -13,6 +13,7 @@ import {
   UtensilsCrossed,
   Users,
   Settings,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 
@@ -59,6 +60,40 @@ export function rotaInicial(perfil: Perfil): Route {
   if (perfil === "cozinha") return "/cozinha";
   return "/pdv";
 }
+
+// ---- Bottom navigation (celular): itens principais curados por perfil ----
+export interface ItemBottom {
+  href: Route;
+  label: string;
+  icone: LucideIcon;
+}
+
+function bottom(href: Route, overrides?: Partial<ItemBottom>): ItemBottom {
+  const n = NAV.find((i) => i.href === href)!;
+  return {
+    href,
+    label: overrides?.label ?? n.label,
+    icone: overrides?.icone ?? n.icone,
+  };
+}
+
+/** Itens principais da bottom nav por perfil (o restante vai em "Mais"). */
+export const BOTTOM_NAV: Record<Perfil, ItemBottom[]> = {
+  dona: [
+    bottom("/painel"),
+    bottom("/auditoria", { label: "Alertas", icone: Bell }),
+    bottom("/financeiro"),
+    bottom("/perdas"),
+  ],
+  gerente: [
+    bottom("/pdv"),
+    bottom("/comandas"),
+    bottom("/estoque"),
+    bottom("/perdas"),
+  ],
+  atendente: [bottom("/pdv"), bottom("/comandas"), bottom("/encomendas")],
+  cozinha: [],
+};
 
 /** O perfil pode acessar a rota (casa sub-rotas: /estoque/compras → /estoque). */
 export function podeAcessarRota(perfil: Perfil, pathname: string): boolean {
