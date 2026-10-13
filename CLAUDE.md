@@ -69,10 +69,10 @@ Resumo (detalhes no documento):
 
 ## Dados mock — referências
 - Lojas: "Loja 1 — Centro" e "Loja 2 — Cohama" (placeholders; ficam fáceis de renomear em `mock/data/lojas.ts`).
-- Usuários: Sarah (Dona, PIN 1234), Glenda (Gerente, 2222), Ana, Bruno, Carla, Diego (Atendentes, 3333…), Seu Raimundo e Dona Lúcia (Cozinha, 4444).
+- Usuários (**todos fictícios** — nunca usar nome que possa ser de funcionário real): Sarah (Dona, PIN 1234), Marta (Gerente, 2222), Larissa, Thiago, Camila, Rafael (Atendentes, 3333…), Seu Antônio e Dona Lúcia (Cozinha, 4444).
 - Preços: Café R$ 3, Café com leite R$ 4, Cuscuz c/ ovo R$ 8, Cuscuz completo R$ 14, Tapioca R$ 7–12, Ovo frito adicional R$ 2, PF de carne/frango R$ 20, Porção de frango R$ 25, Porção de carne R$ 30, Suco natural R$ 6, Fatia de bolo R$ 9, Brigadeiro gourmet R$ 4, Torta de limão (fatia) R$ 10, Bolo de pote R$ 12.
 - Histórico de 30 dias com padrão realista: picos 6h30–9h (café) e 11h30–13h30 (almoço), fim de semana mais forte em doces.
-- Plantar "anomalias" para a demo: Atendente "Bruno" com cancelamentos 3× acima da média; carne com 2,4 kg de divergência na semana; um fechamento de caixa com −R$ 37,00; perdas de ovo acima do normal.
+- Plantar "anomalias" para a demo: Atendente "Thiago" com cancelamentos 3× acima da média; carne com 2,4 kg de divergência na semana; um fechamento de caixa com −R$ 37,00; perdas de ovo acima do normal.
 
 ## Fluxo de trabalho
 1. Execute **uma fase por vez** conforme `docs/PLANO-DE-EXECUCAO.md`, usando as skills indicadas no bloco "SKILLS RECOMENDADAS" de cada fase.

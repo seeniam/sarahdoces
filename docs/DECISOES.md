@@ -10,15 +10,17 @@ CLAUDE.md, PRD e plano referenciam `docs/PRD.md`, `docs/PLANO-DE-EXECUCAO.md`,
 `docs/DIRECAO-DE-ARTE.md`, `docs/qa/`, `docs/DECISOES.md`. Os `.md` estavam na
 raiz; movidos para `docs/`. `CLAUDE.md` permanece na raiz (convenção).
 
-### D0.2 — Paleta/fontes: vence a DIREÇÃO DE ARTE (conflito com CLAUDE.md)
+### D0.2 — Paleta/fontes: vence a DIREÇÃO DE ARTE ✅ RESOLVIDO (confirmado pelo arquiteto)
 `CLAUDE.md` traz uma paleta antiga (cereja `#B3263A`, fundo **creme**, fontes
 Fraunces/Plus Jakarta/Parisienne). `docs/DIRECAO-DE-ARTE.md` define o conceito
 atual "Confeitaria de azulejo" (porcelana `#F5F6F8`, cereja `#9E1B32`, azulejo
 `#1E4F91`, **Gloock + Hanken Grotesk**) e **proíbe fundo creme**. O PRD §8 e a
 direção de arte dizem explicitamente que, em aparência, a direção de arte vence;
 o plano da Fase 0 manda implementar "EXATAMENTE como na direção de arte".
-**Decisão:** seguir `DIRECAO-DE-ARTE.md`. (Se a paleta antiga do CLAUDE.md for a
-desejada, é só avisar — reverter é rápido.)
+**Decisão:** seguir `DIRECAO-DE-ARTE.md`. **Resolvido: direção de arte
+confirmada pelo arquiteto** (aprovação da Fase 0). A seção "## Design" do
+CLAUDE.md foi atualizada para a direção de arte; removidas as menções a creme,
+Fraunces, Plus Jakarta Sans e Parisienne.
 
 ### D0.3 — Next.js 16 com `cacheComponents` DESLIGADO
 O `create-next-app` veio com `cacheComponents: true` + `partialPrefetching`.

@@ -1,4 +1,4 @@
-# Pendências com a cliente (Neemias → Glenda/Sarah)
+# Pendências com a cliente (Neemias → gerência / Sarah)
 
 Itens que faltam para a demo ficar 100% "a cara da loja". Enquanto não chegam,
 o sistema usa os fallbacks da direção de arte (e fica fácil de trocar depois).
@@ -15,7 +15,7 @@ o sistema usa os fallbacks da direção de arte (e fica fácil de trocar depois)
 - [ ] **Foto-herói** (salão, balcão ou mesa bonita) → `public/images/hero.jpg`.
       Hoje: foto de banco livre.
 
-## Confirmar com a Glenda
+## Confirmar com a gerência
 
 - [ ] Nomes reais das 2 lojas (hoje: "Loja 1 — Centro" e "Loja 2 — Cohama",
       editáveis em `lib/mock/data/lojas.ts` na Fase 1).
