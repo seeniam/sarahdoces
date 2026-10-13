@@ -10,7 +10,7 @@ import { BottomNav } from "./BottomNav";
 
 function ShellSkeleton() {
   return (
-    <div className="flex min-h-dvh">
+    <div className="flex h-dvh overflow-hidden">
       <div className="hidden w-64 shrink-0 bg-sidebar lg:block" />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="h-16 border-b border-border" />
@@ -51,11 +51,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-dvh">
+    // Altura travada no viewport: a rolagem acontece dentro do <main> (ou dos
+    // painéis internos do PDV/KDS), nunca na página. Assim o rodapé da comanda
+    // (Total + "Enviar para cozinha") fica sempre visível, sem rolar a página.
+    <div className="flex h-dvh overflow-hidden">
       <Sidebar usuario={usuario} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar usuario={usuario} />
-        <main className="flex-1 px-4 pb-24 pt-5 sm:px-6 lg:pb-8">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 lg:pb-8">
+          {children}
+        </main>
         <BottomNav usuario={usuario} />
       </div>
     </div>

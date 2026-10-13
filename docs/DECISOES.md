@@ -128,3 +128,30 @@ imprime só o cupom.
 Sem o logo e as fotos reais ainda, usamos a marca SVG própria e 7 fotos de banco
 livre (Unsplash) baixadas para `public/images`. Créditos em
 `public/images/CREDITOS.md`; pendências em `docs/PENDENCIAS-CLIENTE.md`.
+
+## Fase 3 — correções da revisão
+
+### D3.4 — Fotos só quando batem com o produto
+Na revisão, várias fotos não correspondiam ao item (cuscuz = sopa verde, PF =
+salmão, café com leite = foto de café, brigadeiro = pedaços de chocolate). Foram
+removidas; ficaram só as que batem claramente (suco natural, fatia de bolo). O
+resto usa o placeholder elegante (fundo nível 2 `#F1EEEC`, ícone de linha da
+categoria em cacau 35% + azulejo discreto no canto). A grade fica intencional
+mesmo 100% sem fotos. `CREDITOS.md` atualizado.
+
+### D3.5 — Shell travado no viewport; rolagem interna por painel
+`AppShell` passou de `min-h-dvh` (página rolava) para `h-dvh overflow-hidden`,
+com o `<main>` rolando por conta própria. Assim o PDV fica como um POS de tablet:
+a grade e a comanda rolam cada uma no seu painel e o rodapé da comanda (Total +
+"Enviar para cozinha") fica **sempre visível**, sem rolar a página. Efeito
+colateral corrigido: numa grade `grid` com altura definida, itens com
+`aspect-ratio` colapsavam e cortavam nome/preço — o scroll foi movido para um
+wrapper (a grade mantém altura natural), igual ao padrão já usado na comanda.
+
+### D3.6 — "Cancelar" após envio é no nível da comanda
+O pedido falava em "cancelar item com PIN após envio". Antes do envio, mexer no
+item (+/−/remover) é livre (rascunho). Depois do envio a comanda está na cozinha;
+o que faz sentido operacional é **cancelar a comanda inteira** com PIN de
+gerente/dona + motivo, gerando `EventoAuditoria` (impacto negativo). Cancelar um
+item isolado de um pedido já na cozinha ficou fora de escopo — anotado em
+`docs/PENDENCIAS-CLIENTE.md` caso a cliente queira granularidade por item.

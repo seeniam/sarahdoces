@@ -202,6 +202,18 @@
   }
 }
 
+/* Toasts com as cores da marca (sucesso = pistache, erro = alerta). */
+[data-sonner-toast][data-type="success"] {
+  --normal-bg: var(--pistache);
+  --normal-text: #fff;
+  --normal-border: color-mix(in srgb, var(--pistache), #000 14%);
+}
+[data-sonner-toast][data-type="error"] {
+  --normal-bg: var(--alerta);
+  --normal-text: #fff;
+  --normal-border: color-mix(in srgb, var(--alerta), #000 14%);
+}
+
 /* Impressão: só a comanda térmica, em 80mm. */
 @media print {
   @page {
@@ -228,17 +240,16 @@
 }
 
 @layer utilities {
-  /* Borda serrilhada de cupom (recortes semicirculares embaixo) */
+  /* Borda serrilhada contínua (zigzag de cupom), sem triângulos soltos. */
   .serrilha-baixo {
-    --dente: 7px;
-    --passo: 15px;
+    --dente: 8px;
     -webkit-mask:
       linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--dente)) no-repeat,
-      radial-gradient(var(--dente) at 50% 0, #0000 97%, #000) bottom / var(--passo)
-        var(--dente) repeat-x;
+      conic-gradient(from -45deg at bottom, #0000 25%, #000 0) 0 100% /
+        calc(2 * var(--dente)) var(--dente) repeat-x;
     mask:
       linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--dente)) no-repeat,
-      radial-gradient(var(--dente) at 50% 0, #0000 97%, #000) bottom / var(--passo)
-        var(--dente) repeat-x;
+      conic-gradient(from -45deg at bottom, #0000 25%, #000 0) 0 100% /
+        calc(2 * var(--dente)) var(--dente) repeat-x;
   }
 }

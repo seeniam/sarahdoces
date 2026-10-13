@@ -8,7 +8,16 @@ import { cn } from "cn";
  * Quando o Neemias colocar o logo real em `public/brand/logo.png`, trocar a
  * marca por <Image> aqui (ver docs/PENDENCIAS-CLIENTE.md).
  */
-export function CerejaMark({ className }: { className?: string }) {
+export function CerejaMark({
+  className,
+  mono = false,
+}: {
+  className?: string;
+  /** Monocromático (currentColor) — para a comanda térmica em preto. */
+  mono?: boolean;
+}) {
+  const fruta = mono ? "currentColor" : "var(--cereja)";
+  const folha = mono ? "currentColor" : "var(--pistache)";
   return (
     <svg
       viewBox="0 0 48 48"
@@ -33,16 +42,17 @@ export function CerejaMark({ className }: { className?: string }) {
         fill="none"
       />
       {/* Folha */}
-      <path
-        d="M30 9 C34 3 41 4 43 9 C39 12 32 12 30 9 Z"
-        fill="var(--pistache)"
-      />
+      <path d="M30 9 C34 3 41 4 43 9 C39 12 32 12 30 9 Z" fill={folha} />
       {/* Cerejas */}
-      <circle cx="17" cy="34" r="9" fill="var(--cereja)" />
-      <circle cx="32" cy="36" r="8" fill="var(--cereja)" />
-      {/* Brilho de calda */}
-      <ellipse cx="14" cy="31" rx="2.6" ry="3.4" fill="#FFFFFF" opacity="0.4" />
-      <ellipse cx="29.5" cy="33.5" rx="2.2" ry="3" fill="#FFFFFF" opacity="0.35" />
+      <circle cx="17" cy="34" r="9" fill={fruta} />
+      <circle cx="32" cy="36" r="8" fill={fruta} />
+      {/* Brilho de calda (só na versão colorida) */}
+      {!mono && (
+        <>
+          <ellipse cx="14" cy="31" rx="2.6" ry="3.4" fill="#FFFFFF" opacity="0.4" />
+          <ellipse cx="29.5" cy="33.5" rx="2.2" ry="3" fill="#FFFFFF" opacity="0.35" />
+        </>
+      )}
     </svg>
   );
 }

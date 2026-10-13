@@ -6,7 +6,12 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  timeout: 45_000,
+  // O seed pesado roda uma vez por contexto (pós-montagem). Em paralelo pesado,
+  // a contenção atrasava um redirect de guarda além do timeout (flaky). Serial
+  // local (2 workers no CI) mantém a suíte determinística e rápida (~50s).
+  fullyParallel: false,
+  workers: process.env.CI ? 2 : 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",

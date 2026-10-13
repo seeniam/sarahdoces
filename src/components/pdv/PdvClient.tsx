@@ -51,6 +51,7 @@ export function PdvClient() {
   const comandas = useDadosStore((s) => s.comandas);
   const sessoesCaixa = useDadosStore((s) => s.sessoesCaixa);
   const enviarComandaStore = useDadosStore((s) => s.enviarComanda);
+  const avancarStatusComanda = useDadosStore((s) => s.avancarStatusComanda);
   const registrarPagamento = useDadosStore((s) => s.registrarPagamento);
   const abrirCaixaStore = useDadosStore((s) => s.abrirCaixa);
   const adicionarEvento = useDadosStore((s) => s.adicionarEvento);
@@ -80,10 +81,16 @@ export function PdvClient() {
   const [cortesia, setCortesia] = useState(false);
   const [impressao, setImpressao] = useState<Comanda | null>(null);
   const [pagamentoComanda, setPagamentoComanda] = useState<Comanda | null>(null);
+  const [cancelando, setCancelando] = useState<Comanda | null>(null);
 
   const produtosFiltrados = produtos.filter(
     (p) => p.ativo && (!categoriaSel || p.categoriaId === categoriaSel),
   );
+
+  const quantidades = cart.itens.reduce<Record<string, number>>((acc, it) => {
+    acc[it.produtoId] = (acc[it.produtoId] ?? 0) + it.qtd;
+    return acc;
+  }, {});
 
   const abertas = comandas.filter(
     (c) =>
@@ -191,6 +198,28 @@ export function PdvClient() {
     setPagamentoComanda(null);
   }
 
+  function cancelar(autorizador: (typeof usuarios)[number], motivo: string) {
+    if (!cancelando) return;
+    avancarStatusComanda(cancelando.id, "cancelada");
+    adicionarEvento(
+      registrarEvento(
+        {
+          tipo: "cancelamento",
+          lojaId: lojaAtual,
+          usuarioId: usuario!.id,
+          autorizadoPor: autorizador.id,
+          descricao: `Comanda #${cancelando.numero} cancelada por ${autorizador.nome}: ${motivo}`,
+          valorImpacto: -totalComanda(cancelando),
+          refId: cancelando.id,
+        },
+        novoId("ev"),
+        agoraISO(),
+      ),
+    );
+    toast.success(`Comanda #${cancelando.numero} cancelada`);
+    setCancelando(null);
+  }
+
   return (
     <div className="flex h-full flex-col gap-4 lg:flex-row">
       {/* Trilho de categorias */}
@@ -207,32 +236,45 @@ export function PdvClient() {
         <GradeProdutos
           produtos={produtosFiltrados}
           iconePorCategoria={iconePorCategoria}
+          quantidades={quantidades}
           onAdd={cart.adicionar}
         />
       </div>
 
-      {/* Comanda viva (desktop) */}
-      <div className="hidden w-[360px] shrink-0 lg:block">
-        <ComandaViva onEnviar={enviar} onPedirDesconto={abrirDesconto} />
-      </div>
-
-      {/* Barra + comanda (mobile) */}
-      <div className="fixed inset-x-0 bottom-16 z-20 flex gap-2 border-t border-border bg-background/95 p-3 backdrop-blur lg:hidden">
+      {/* Coluna da comanda (desktop): Comandas abertas no topo + comanda viva */}
+      <div className="hidden w-[360px] shrink-0 flex-col gap-3 lg:flex">
         {abertas.length > 0 && (
           <ComandasAbertasSheet
             abertas={abertas}
             onPagar={setPagamentoComanda}
+            onCancelar={setCancelando}
+            largura="full"
+          />
+        )}
+        <div className="min-h-0 flex-1">
+          <ComandaViva onEnviar={enviar} onPedirDesconto={abrirDesconto} />
+        </div>
+      </div>
+
+      {/* Barra + comanda (mobile) */}
+      <div className="fixed inset-x-0 bottom-16 z-20 flex items-center gap-2 border-t border-border bg-background/95 p-3 backdrop-blur lg:hidden">
+        {abertas.length > 0 && (
+          <ComandasAbertasSheet
+            abertas={abertas}
+            onPagar={setPagamentoComanda}
+            onCancelar={setCancelando}
+            compacto
           />
         )}
         <Sheet>
           <SheetTrigger
-            render={<Button className="h-12 flex-1 justify-between text-base" />}
+            render={<Button className="h-12 min-w-0 flex-1 justify-between gap-2 text-sm" />}
           >
-            <span className="inline-flex items-center gap-2">
-              <ShoppingBag className="size-4" />
-              Comanda · {cart.itens.length}
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <ShoppingBag className="size-4 shrink-0" />
+              <span className="truncate">Comanda · {cart.itens.length} itens</span>
             </span>
-            <span className="tnum">{formatBRL(totalCart)}</span>
+            <span className="shrink-0 tnum">{formatBRL(totalCart)}</span>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-[88dvh] rounded-t-[20px] p-0">
             <SheetHeader className="px-4">
@@ -244,13 +286,6 @@ export function PdvClient() {
           </SheetContent>
         </Sheet>
       </div>
-
-      {/* Comandas abertas (desktop) */}
-      {abertas.length > 0 && (
-        <div className="fixed bottom-6 right-6 z-20 hidden lg:block">
-          <ComandasAbertasSheet abertas={abertas} onPagar={setPagamentoComanda} />
-        </div>
-      )}
 
       {/* Abertura de caixa obrigatória */}
       <AberturaCaixa aberto={!sessaoAberta} onAbrir={abrirCaixa} />
@@ -325,6 +360,15 @@ export function PdvClient() {
           onConfirmar={receber}
         />
       )}
+
+      {/* Cancelar comanda enviada (com PIN) */}
+      <PinAutorizacao
+        aberto={!!cancelando}
+        onOpenChange={(o) => !o && setCancelando(null)}
+        titulo={cancelando ? `Cancelar comanda #${cancelando.numero}` : "Cancelar comanda"}
+        descricao="Cancelar uma comanda já enviada só com a gerente ou a Sarah. Fica registrado na auditoria."
+        onAutorizado={cancelar}
+      />
     </div>
   );
 }
@@ -332,18 +376,37 @@ export function PdvClient() {
 function ComandasAbertasSheet({
   abertas,
   onPagar,
+  onCancelar,
+  compacto = false,
+  largura,
 }: {
   abertas: Comanda[];
   onPagar: (c: Comanda) => void;
+  onCancelar: (c: Comanda) => void;
+  compacto?: boolean;
+  largura?: "full";
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
-        render={<Button variant="outline" size="lg" className="h-12 shadow-soft" />}
+        render={
+          <Button
+            variant="outline"
+            size="lg"
+            className={cn(
+              "h-12 shadow-soft",
+              largura === "full" && "w-full justify-between",
+              compacto && "shrink-0 px-3",
+            )}
+          />
+        }
       >
-        <Receipt className="size-4" />
-        Comandas abertas
-        <span className="ml-1 grid min-w-5 place-items-center rounded-full bg-cereja px-1 text-xs text-white tnum">
+        <span className="inline-flex items-center gap-2">
+          <Receipt className="size-4" />
+          {compacto ? "Abertas" : "Comandas abertas"}
+        </span>
+        <span className="grid min-w-5 place-items-center rounded-full bg-cereja px-1 text-xs text-white tnum">
           {abertas.length}
         </span>
       </SheetTrigger>
@@ -353,22 +416,41 @@ function ComandasAbertasSheet({
         </SheetHeader>
         <div className="space-y-2 overflow-y-auto px-4 pb-8">
           {abertas.map((c) => (
-            <div
-              key={c.id}
-              className="flex items-center justify-between gap-3 rounded-[14px] border border-border bg-card p-3"
-            >
-              <div className="min-w-0">
-                <p className="font-display text-lg leading-none">
-                  #{String(c.numero).padStart(4, "0")}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {c.tipo === "mesa" ? "Mesa" : c.tipo === "balcao" ? "Balcão" : "Viagem"}
-                  {c.identificador ? ` ${c.identificador}` : ""} · {c.itens.length} itens
-                </p>
+            <div key={c.id} className="rounded-[14px] border border-border bg-card p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-display text-lg leading-none">
+                    #{String(c.numero).padStart(4, "0")}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {c.tipo === "mesa" ? "Mesa" : c.tipo === "balcao" ? "Balcão" : "Viagem"}
+                    {c.identificador ? ` ${c.identificador}` : ""} · {c.itens.length} itens
+                  </p>
+                </div>
+                <span className="shrink-0 font-semibold tnum">
+                  {formatBRL(totalComanda(c))}
+                </span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="font-semibold tnum">{formatBRL(totalComanda(c))}</span>
-                <Button size="sm" onClick={() => onPagar(c)}>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    setOpen(false);
+                    onCancelar(c);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    setOpen(false);
+                    onPagar(c);
+                  }}
+                >
                   Receber
                 </Button>
               </div>

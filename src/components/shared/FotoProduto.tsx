@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { cn } from "cn";
 import { BLUR_ACUCAR } from "@/lib/brand/blur";
+import { azulejoBackground } from "@/lib/brand/azulejo";
 import { ICONES_CATEGORIA, type CategoriaIcone } from "@/components/brand/icons";
 
 type Aspecto = "4:3" | "1:1" | "4:5";
@@ -44,7 +45,7 @@ export function FotoProduto({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[14px] bg-acucar",
+        "relative overflow-hidden rounded-[14px] bg-[#F1EEEC] dark:bg-popover",
         ASPECTO[aspecto],
         className,
       )}
@@ -64,9 +65,19 @@ export function FotoProduto({
           )}
         />
       ) : (
-        <div className="absolute inset-0 grid place-items-center">
-          <Icone className="size-1/3 text-cereja/35" strokeWidth={1.25} />
-        </div>
+        <>
+          <div className="absolute inset-0 grid place-items-center">
+            <Icone className="size-1/3 text-foreground/35" strokeWidth={1.1} />
+          </div>
+          <div
+            aria-hidden
+            className="absolute -bottom-1 -right-1 size-9 opacity-45"
+            style={{
+              ...azulejoBackground({ color: "#1E4F91", strokeWidth: 1, size: 36 }),
+              backgroundRepeat: "no-repeat",
+            }}
+          />
+        </>
       )}
     </div>
   );
