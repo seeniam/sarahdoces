@@ -8,7 +8,6 @@ export type LojaAtiva = LojaId | "todas";
 export interface SessaoState {
   usuarioId: UsuarioId | null;
   lojaAtiva: LojaAtiva;
-  hidratado: boolean;
   entrar: (usuarioId: UsuarioId, lojaAtiva?: LojaAtiva) => void;
   sair: () => void;
   setLoja: (loja: LojaAtiva) => void;
@@ -29,7 +28,6 @@ export const useSessaoStore = create<SessaoState>()(
     (set) => ({
       usuarioId: null,
       lojaAtiva: "loja-1",
-      hidratado: false,
       entrar: (usuarioId, lojaAtiva) =>
         set((s) => ({ usuarioId, lojaAtiva: lojaAtiva ?? s.lojaAtiva })),
       sair: () => set({ usuarioId: null }),
@@ -40,16 +38,12 @@ export const useSessaoStore = create<SessaoState>()(
       version: 1,
       storage: createJSONStorage(() => storage),
       partialize: (s) => ({ usuarioId: s.usuarioId, lojaAtiva: s.lojaAtiva }),
+      // Re-hidratação pós-montagem (ver useHidratado). Evita mismatch de SSR.
+      skipHydration: true,
     },
   ),
 );
 
 if (typeof window !== "undefined") {
-  if (useSessaoStore.persist.hasHydrated()) {
-    useSessaoStore.setState({ hidratado: true });
-  }
-  useSessaoStore.persist.onFinishHydration(() =>
-    useSessaoStore.setState({ hidratado: true }),
-  );
   sincronizarAbas("cereja-sessao", useSessaoStore);
 }

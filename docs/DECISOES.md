@@ -46,6 +46,28 @@ escuro é o "cacau" da direção de arte.
 O scaffold ligou o Tailwind v4 pelo loader `@tailwindcss/turbopack` no
 `next.config.ts` (sem `postcss.config`/`tailwind.config`). Mantido assim.
 
+## Fase 1 — Tipos, dados mock e regras de negócio
+
+### D1.1 — Stores: consolidados + hidratação pós-montagem
+Em vez de um store persistido por domínio (duplicaria o histórico de 30 dias no
+localStorage), um `useDadosStore` (banco inteiro) + `useSessaoStore` (usuário/
+loja). Os domínios são acessados por seletores. Ambos usam `skipHydration: true`
+e re-hidratam no hook `useHidratado` (pós-montagem) — assim servidor e primeiro
+render do cliente mostram o mesmo estado inicial (sem mismatch). Sincronização
+entre abas por BroadcastChannel (avisa "mudou" → as outras re-hidratam).
+
+### D1.2 — Datas do seed no fuso de São Luís (determinístico)
+O seed constrói instantes com offset explícito `-03:00` e aritmética de
+calendário em UTC, então a saída é idêntica em qualquer fuso (servidor UTC ou
+navegador local). A UI formata datas sempre em `America/Fortaleza`
+(`lib/format.ts`), evitando horários divergentes e mismatch de hidratação.
+
+### D1.3 — Code-review da Fase 1 aplicado
+Revisão adversarial (workflow) encontrou e corrigimos: hidratação dos stores
+(D1.1), fuso/determinismo do seed e atribuição de dinheiro por dia (D1.2),
+comparação cruzada descontos×cancelamentos e redação do score de risco em
+`lib/domain/auditoria.ts`.
+
 ### D0.7 — Imagens de fallback
 Sem o logo e as fotos reais ainda, usamos a marca SVG própria e 7 fotos de banco
 livre (Unsplash) baixadas para `public/images`. Créditos em

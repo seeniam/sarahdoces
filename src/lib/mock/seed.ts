@@ -34,10 +34,15 @@ import {
   USUARIOS,
 } from "./data";
 
-/** "Hoje" fixo da demo (sempre os mesmos números). */
-export const DATA_REFERENCIA = new Date(2026, 9, 13, 21, 0, 0); // 13/10/2026
+/** São Luís/MA não tem horário de verão → offset fixo. */
+const TZ_OFFSET = "-03:00";
+/** "Hoje" fixo da demo (21h em São Luís). Sempre o mesmo instante, em qualquer fuso. */
+export const DATA_REFERENCIA = new Date(`2026-10-13T21:00:00${TZ_OFFSET}`);
 const DIAS = 30;
 const SEED = 42;
+/** Âncora de calendário: meia-noite UTC do dia de referência (13/10/2026). */
+const REF_UTC = Date.UTC(2026, 9, 13);
+const pad = (n: number) => String(n).padStart(2, "0");
 
 const ATENDENTES_LOJA: Record<LojaId, UsuarioId[]> = {
   "loja-1": ["u-larissa", "u-thiago"],
@@ -92,17 +97,25 @@ const FORNECEDOR_CATS: Record<Fornecedor, string[]> = {
   Atacadão: ["graos", "confeitaria"],
 };
 
-function dataNoDia(offset: number, hora: number, minuto: number): string {
-  const d = new Date(DATA_REFERENCIA);
-  d.setDate(d.getDate() - (DIAS - 1 - offset));
-  d.setHours(hora, minuto, 0, 0);
-  return d.toISOString();
+/** Calendário (ano/mês/dia) do dia `offset`, contando para trás da referência. */
+function diaCalendario(offset: number): { ano: number; mes: number; dia: number } {
+  const d = new Date(REF_UTC);
+  d.setUTCDate(d.getUTCDate() - (DIAS - 1 - offset));
+  return { ano: d.getUTCFullYear(), mes: d.getUTCMonth() + 1, dia: d.getUTCDate() };
 }
+
+/** Instante ISO (UTC) de uma hora local de São Luís — determinístico (offset explícito). */
+function dataNoDia(offset: number, hora: number, minuto: number): string {
+  const { ano, mes, dia } = diaCalendario(offset);
+  return new Date(
+    `${ano}-${pad(mes)}-${pad(dia)}T${pad(hora)}:${pad(minuto)}:00${TZ_OFFSET}`,
+  ).toISOString();
+}
+
 function ehFimDeSemana(offset: number): boolean {
-  const d = new Date(DATA_REFERENCIA);
-  d.setDate(d.getDate() - (DIAS - 1 - offset));
-  const dia = d.getDay();
-  return dia === 0 || dia === 6;
+  const { ano, mes, dia } = diaCalendario(offset);
+  const d = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
+  return d === 0 || d === 6;
 }
 
 function poolDoHorario(hora: number): [string, number][] {
@@ -449,18 +462,23 @@ export function gerarSeed(): BancoMock {
   }
 
   // ---- Sessões de caixa (uma por atendente/dia) + fechamento cego ----
+  const atendenteDaComanda = new Map(comandas.map((c) => [c.id, c.atendenteId]));
   let seqSessao = 0;
   for (let offset = 0; offset < DIAS; offset++) {
     if (offset === DIAS - 1) continue; // "hoje" o caixa ainda está aberto
     for (const loja of LOJAS) {
       for (const atendenteId of ATENDENTES_LOJA[loja.id]) {
+        // Janela do dia em horário de São Luís (instantes UTC): [00:00, próximo 00:00)
+        const inicioDia = dataNoDia(offset, 0, 0);
+        const inicioProximo = dataNoDia(offset + 1, 0, 0);
         const dinheiroDoDia = pagamentos
           .filter(
             (p) =>
               p.forma === "dinheiro" &&
               p.lojaId === loja.id &&
-              p.data.startsWith(dataNoDia(offset, 0, 0).slice(0, 10)) &&
-              comandas.find((c) => c.id === p.comandaId)?.atendenteId === atendenteId,
+              p.data >= inicioDia &&
+              p.data < inicioProximo &&
+              atendenteDaComanda.get(p.comandaId) === atendenteId,
           )
           .reduce((s, p) => s + p.valor, 0);
 
@@ -530,8 +548,11 @@ export function gerarSeed(): BancoMock {
       descricao,
       categoria,
       valor,
-      vencimento: new Date(2026, 9, diaVenc, 0, 0, 0).toISOString(),
-      pagoEm: diaVenc < 13 ? new Date(2026, 9, diaVenc, 10, 0, 0).toISOString() : undefined,
+      vencimento: new Date(`2026-10-${pad(diaVenc)}T00:00:00${TZ_OFFSET}`).toISOString(),
+      pagoEm:
+        diaVenc < 13
+          ? new Date(`2026-10-${pad(diaVenc)}T10:00:00${TZ_OFFSET}`).toISOString()
+          : undefined,
     });
   });
 
@@ -542,9 +563,11 @@ export function gerarSeed(): BancoMock {
   const clientesEnc = ["Dona Fátima", "Léo (aniversário)", "Escritório Alfa", "Vânia", "Cléo"];
   clientesEnc.forEach((cliente, i) => {
     const offsetEntrega = i - 1; // alguns futuros, alguns passados
-    const d = new Date(DATA_REFERENCIA);
-    d.setDate(d.getDate() + offsetEntrega * 2);
-    d.setHours(15, 0, 0, 0);
+    const cal = new Date(REF_UTC);
+    cal.setUTCDate(cal.getUTCDate() + offsetEntrega * 2);
+    const dataEntrega = new Date(
+      `${cal.getUTCFullYear()}-${pad(cal.getUTCMonth() + 1)}-${pad(cal.getUTCDate())}T15:00:00${TZ_OFFSET}`,
+    ).toISOString();
     const total = rng.pick([80, 120, 150, 90, 200]);
     encomendas.push({
       id: `enc-${(i + 1).toString().padStart(3, "0")}`,
@@ -554,7 +577,7 @@ export function gerarSeed(): BancoMock {
         { produtoId: "prod-bolo-pote", qtd: rng.int(6, 20) },
         ...(rng.chance(0.5) ? [{ produtoId: "prod-brigadeiro", qtd: rng.int(20, 50) }] : []),
       ],
-      dataEntrega: d.toISOString(),
+      dataEntrega,
       sinal: Number((total * 0.5).toFixed(2)),
       total,
       status: statusEnc[i % statusEnc.length],

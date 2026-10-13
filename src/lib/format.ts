@@ -55,3 +55,29 @@ export function formatQuantidade(valor: number, unidade: string): string {
   const casas = Number.isInteger(valor) ? 0 : valor < 10 ? 1 : 0;
   return `${formatNumero(valor, casas)} ${unidade}`;
 }
+
+// --- Datas sempre no fuso de São Luís/MA, para o mesmo horário no servidor e
+// no cliente (evita mismatch de hidratação por fuso). ---
+const TZ = "America/Fortaleza"; // UTC-3, mesmo de São Luís
+
+const fmtHora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+const fmtData = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: TZ });
+const fmtDataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: TZ });
+const fmtDataHora = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: TZ });
+
+/** 07:42 */
+export function formatHora(iso: string): string {
+  return fmtHora.format(new Date(iso));
+}
+/** 13/10/2026 */
+export function formatData(iso: string): string {
+  return fmtData.format(new Date(iso));
+}
+/** 13/10 */
+export function formatDataCurta(iso: string): string {
+  return fmtDataCurta.format(new Date(iso));
+}
+/** 13/10 07:42 */
+export function formatDataHora(iso: string): string {
+  return fmtDataHora.format(new Date(iso));
+}

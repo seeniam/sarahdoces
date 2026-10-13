@@ -5,8 +5,6 @@ import { gerarSeed } from "@/lib/mock/seed";
 import { sincronizarAbas } from "./sync";
 
 export type DadosState = BancoMock & {
-  /** true quando o estado persistido já foi lido do localStorage. */
-  hidratado: boolean;
   /** Restaura o banco mock ao seed determinístico. */
   resetarDemo: () => void;
 };
@@ -25,7 +23,6 @@ export const useDadosStore = create<DadosState>()(
   persist(
     (set) => ({
       ...gerarSeed(),
-      hidratado: false,
       resetarDemo: () => set({ ...gerarSeed() }),
     }),
     {
@@ -52,17 +49,15 @@ export const useDadosStore = create<DadosState>()(
         encomendas: s.encomendas,
         eventos: s.eventos,
       }),
+      // Não hidratar no create() (seria síncrono, antes do render do React, e
+      // causaria mismatch). A re-hidratação acontece pós-montagem no hook
+      // useHidratado. Ver docs/NEXT16-NOTES.md.
+      skipHydration: true,
     },
   ),
 );
 
-// Marca hidratação e liga a sincronização entre abas (client only).
+// Sincronização entre abas (client only).
 if (typeof window !== "undefined") {
-  if (useDadosStore.persist.hasHydrated()) {
-    useDadosStore.setState({ hidratado: true });
-  }
-  useDadosStore.persist.onFinishHydration(() =>
-    useDadosStore.setState({ hidratado: true }),
-  );
   sincronizarAbas("cereja-dados", useDadosStore);
 }

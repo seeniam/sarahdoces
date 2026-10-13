@@ -109,20 +109,21 @@ export function scoreDeRisco(
   });
 
   const totalCancel = base.reduce((s, b) => s + b.cancelamentos, 0);
-  const mediaCancel = totalCancel / atendentes.length;
+  const totalDesc = base.reduce((s, b) => s + b.descontos, 0);
+  const mediaDesconto = totalDesc / atendentes.length;
 
   const brutos = base.map((b) => b.cancelamentos * 3 + b.descontos * 2 + b.cortesias);
   const maxBruto = Math.max(1, ...brutos);
 
   const risco: RiscoAtendente[] = base.map((b, i) => {
-    // Compara com a média dos DEMAIS atendentes ("3× mais que a média").
+    // Razão em relação à média dos DEMAIS atendentes (a frase diz exatamente isso).
     const outros = atendentes.length > 1 ? (totalCancel - b.cancelamentos) / (atendentes.length - 1) : 0;
     const razao = outros > 0 ? b.cancelamentos / outros : b.cancelamentos > 0 ? 3 : 0;
     let explicacao: string;
     if (razao >= 1.8) {
-      explicacao = `${b.u.nome} cancelou ${Math.round(razao)}× mais que a média da equipe.`;
-    } else if (b.descontos >= 2 && b.descontos > mediaCancel) {
-      explicacao = `${b.u.nome} aplicou ${b.descontos} descontos no período.`;
+      explicacao = `${b.u.nome} cancelou ${Math.round(razao)}× mais que a média dos demais atendentes.`;
+    } else if (b.descontos >= 2 && b.descontos > mediaDesconto) {
+      explicacao = `${b.u.nome} aplicou ${b.descontos} descontos no período (acima da média).`;
     } else {
       explicacao = `${b.u.nome} está dentro da média da equipe.`;
     }
