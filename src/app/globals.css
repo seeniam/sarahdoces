@@ -1,0 +1,219 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Modo escuro "cacau" por classe (.dark), não por prefers-color-scheme. */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ---- Tokens semânticos (shadcn) → variáveis de marca ---- */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ---- Tokens de marca (utilitários bg-cereja, text-azulejo, etc.) ---- */
+  --color-porcelana: var(--porcelana);
+  --color-superficie: var(--superficie);
+  --color-cereja: var(--cereja);
+  --color-cereja-calda: var(--cereja-calda);
+  --color-azulejo: var(--azulejo);
+  --color-acucar: var(--acucar);
+  --color-cacau: var(--cacau);
+  --color-pistache: var(--pistache);
+  --color-doce-de-leite: var(--doce-de-leite);
+  --color-alerta: var(--alerta);
+  /* Cor por loja: linguagem do sistema (Loja 1 = cereja, Loja 2 = azulejo) */
+  --color-loja-1: var(--cereja);
+  --color-loja-2: var(--azulejo);
+
+  /* ---- Tipografia ---- */
+  --font-sans: var(--font-hanken);
+  --font-display: var(--font-gloock);
+  --font-heading: var(--font-gloock);
+  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", monospace;
+
+  /* ---- Sombras tingidas de cacau (nunca cinza puro) ---- */
+  --shadow-soft: 0 1px 2px rgb(43 27 24 / 0.06), 0 8px 24px -12px rgb(43 27 24 / 0.18);
+  --shadow-raised: 0 1px 2px rgb(43 27 24 / 0.08), 0 20px 44px -18px rgb(43 27 24 / 0.3);
+  --shadow-comanda: 0 1px 1px rgb(43 27 24 / 0.05), 0 12px 30px -14px rgb(43 27 24 / 0.22);
+
+  /* ---- Hierarquia de raios (containers 20 · cards 14 · controles ~10) ---- */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.85);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: 20px;
+  --radius-3xl: 28px;
+}
+
+/* ========================= TEMA CLARO (porcelana) ========================= */
+:root {
+  --radius: 0.625rem; /* 10px — controles */
+
+  --background: #f5f6f8; /* porcelana — branco frio de louça, NÃO creme */
+  --foreground: #2b1b18; /* cacau */
+  --card: #ffffff;
+  --card-foreground: #2b1b18;
+  --popover: #ffffff;
+  --popover-foreground: #2b1b18;
+
+  --primary: #9e1b32; /* cereja */
+  --primary-foreground: #ffffff;
+  --secondary: #eceef1; /* porcelana sombreada */
+  --secondary-foreground: #2b1b18;
+  --muted: #edeff2;
+  --muted-foreground: #6b5f5b; /* cacau ~62% */
+  --accent: #f6dddf; /* açúcar */
+  --accent-foreground: #6f0f22; /* cereja-calda */
+  --destructive: #c8372d; /* alerta (mais alaranjado que a cereja) */
+
+  --border: rgb(43 27 24 / 0.1);
+  --input: rgb(43 27 24 / 0.14);
+  --ring: #9e1b32;
+
+  --chart-1: #9e1b32; /* cereja / Loja 1 */
+  --chart-2: #1e4f91; /* azulejo / Loja 2 */
+  --chart-3: #5e7f36; /* pistache */
+  --chart-4: #c98a2e; /* doce-de-leite */
+  --chart-5: #7e4a66; /* ameixa */
+
+  --sidebar: #2b1b18; /* cacau */
+  --sidebar-foreground: #efe7e4;
+  --sidebar-primary: #d2475d;
+  --sidebar-primary-foreground: #2b1b18;
+  --sidebar-accent: #3b2a26;
+  --sidebar-accent-foreground: #f5f0ee;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #d2475d;
+
+  /* Tokens de marca (crus) */
+  --porcelana: #f5f6f8;
+  --superficie: #ffffff;
+  --cereja: #9e1b32;
+  --cereja-calda: #6f0f22;
+  --azulejo: #1e4f91;
+  --acucar: #f6dddf;
+  --cacau: #2b1b18;
+  --pistache: #5e7f36;
+  --doce-de-leite: #c98a2e;
+  --alerta: #c8372d;
+}
+
+/* ========================== TEMA ESCURO (cacau) ========================== */
+.dark {
+  --background: #1c1210;
+  --foreground: #f2eae8;
+  --card: #261916; /* nível 1 */
+  --card-foreground: #f2eae8;
+  --popover: #2f201c; /* nível 2 */
+  --popover-foreground: #f2eae8;
+
+  --primary: #d2475d; /* cereja clareada */
+  --primary-foreground: #1c1210;
+  --secondary: #33231f;
+  --secondary-foreground: #f2eae8;
+  --muted: #2f201c;
+  --muted-foreground: #b6a49e;
+  --accent: #3a2824;
+  --accent-foreground: #f3dedf;
+  --destructive: #e05a4f;
+
+  --border: rgb(255 255 255 / 0.1);
+  --input: rgb(255 255 255 / 0.16);
+  --ring: #d2475d;
+
+  --chart-1: #d2475d;
+  --chart-2: #6e9bd8; /* azulejo clareado */
+  --chart-3: #93b06a;
+  --chart-4: #e0b05e;
+  --chart-5: #b98aa6;
+
+  --sidebar: #16100e;
+  --sidebar-foreground: #f2eae8;
+  --sidebar-primary: #d2475d;
+  --sidebar-primary-foreground: #16100e;
+  --sidebar-accent: #2a1d1a;
+  --sidebar-accent-foreground: #f2eae8;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #d2475d;
+
+  /* Acentos clareados para contraste sobre o cacau. `cacau` NÃO inverte
+     (continua sendo a cor de superfície escura, herdada do :root). */
+  --porcelana: #1c1210;
+  --superficie: #261916;
+  --cereja: #d2475d;
+  --cereja-calda: #e0708a;
+  --azulejo: #6e9bd8;
+  --acucar: #38241f;
+  --pistache: #93b06a;
+  --doce-de-leite: #e0b05e;
+  --alerta: #e05a4f;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/60;
+  }
+  html {
+    @apply font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  /* Seleção de texto com açúcar */
+  ::selection {
+    background: color-mix(in srgb, var(--cereja) 22%, transparent);
+    color: var(--foreground);
+  }
+  /* Números tabulares onde pedido explicitamente */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+@layer utilities {
+  /* Borda serrilhada de cupom (recortes semicirculares embaixo) */
+  .serrilha-baixo {
+    --dente: 7px;
+    --passo: 15px;
+    -webkit-mask:
+      linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--dente)) no-repeat,
+      radial-gradient(var(--dente) at 50% 0, #0000 97%, #000) bottom / var(--passo)
+        var(--dente) repeat-x;
+    mask:
+      linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--dente)) no-repeat,
+      radial-gradient(var(--dente) at 50% 0, #0000 97%, #000) bottom / var(--passo)
+        var(--dente) repeat-x;
+  }
+}
