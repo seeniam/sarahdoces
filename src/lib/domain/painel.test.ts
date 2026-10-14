@@ -77,7 +77,7 @@ describe("metricasPainel — 3 números conferidos independentemente", () => {
       { id: "pl", lojaId: "loja-1", qtd: 1, motivo: "queimou", custo: 8, usuarioId: "u-x", data: HOJE10 },
     ],
     despesas: [
-      { id: "d", descricao: "Aluguel", categoria: "aluguel", valor: 300, vencimento: HOJE10 },
+      { id: "d", descricao: "Aluguel", categoria: "aluguel", valor: 300, vencimento: HOJE10, recorrente: true },
     ],
   });
 

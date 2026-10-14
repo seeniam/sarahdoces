@@ -85,7 +85,8 @@ export type TipoEvento =
   | "contagem_divergencia"
   | "preco_alterado"
   | "perda"
-  | "transferencia";
+  | "transferencia"
+  | "sangria";
 
 export type Fornecedor =
   | "Mateus"
@@ -349,7 +350,21 @@ export interface Sangria {
   valor: number;
   motivo: string;
   data: ISODate;
+  /** Gerente/Dona que liberou a retirada (PIN). */
+  autorizadorId?: UsuarioId;
 }
+
+/** Suprimento (entrada de troco no caixa durante o turno). */
+export interface Suprimento {
+  id: Id;
+  valor: number;
+  motivo: string;
+  data: ISODate;
+}
+
+/** Formas que o atendente conta às cegas no fechamento (Pix não entra). */
+export type FormaContada = "dinheiro" | "debito" | "credito";
+export type ValoresPorForma = Record<FormaContada, number>;
 
 export interface SessaoCaixa {
   id: Id;
@@ -358,13 +373,21 @@ export interface SessaoCaixa {
   abertura: ISODate;
   fechamento?: ISODate;
   valorInicial: number;
-  /** Informado às cegas pelo atendente no fechamento. */
+  /** Informado às cegas pelo atendente no fechamento (dinheiro, p/ compat). */
   valorInformado?: number;
-  /** Esperado pelo sistema (inicial + dinheiro − sangrias). */
+  /** Esperado pelo sistema em dinheiro (inicial + dinheiro − sangrias). */
   valorEsperado?: number;
-  /** valorInformado − valorEsperado (negativo = falta). */
+  /** Diferença TOTAL (soma das formas contadas). Negativo = falta. */
   diferenca?: number;
+  // ---- Fechamento cego por forma (Fase 7) ----
+  /** O que o sistema espera, por forma (dinheiro já com inicial/sangria/supr.). */
+  esperadoPorForma?: ValoresPorForma;
+  /** O que o atendente informou, por forma. */
+  informadoPorForma?: ValoresPorForma;
+  /** informado − esperado, por forma. */
+  diferencaPorForma?: ValoresPorForma;
   sangrias: Sangria[];
+  suprimentos?: Suprimento[];
 }
 
 export interface Despesa {
@@ -375,6 +398,11 @@ export interface Despesa {
   valor: number;
   vencimento: ISODate;
   pagoEm?: ISODate;
+  /**
+   * Custo fixo mensal (aluguel, folha…) — rateado por dia na DRE. Avulsas
+   * (undefined/false) contam pelo valor cheio só quando caem no período.
+   */
+  recorrente?: boolean;
 }
 
 export interface ItemEncomenda {

@@ -5,6 +5,7 @@ import type {
   Comanda,
   Compra,
   Contagem,
+  Despesa,
   EventoAuditoria,
   ItemContagem,
   LojaId,
@@ -14,6 +15,7 @@ import type {
   StatusComanda,
   Transferencia,
   UsuarioId,
+  ValoresPorForma,
 } from "@/types";
 import { gerarSeed, dataFortaleza, VERSAO_SEED } from "@/lib/mock/seed";
 import {
@@ -23,6 +25,13 @@ import {
 } from "@/lib/domain/estoque";
 import { perdaPorCancelamento } from "@/lib/domain/perdas";
 import { registrarEvento } from "@/lib/domain/auditoria";
+import {
+  fecharCaixaCegoPorForma,
+  vendasDaSessao,
+  ROTULO_FORMA,
+  type FechamentoPorForma,
+} from "@/lib/domain/financeiro";
+import { formatBRLSinalado } from "@/lib/format";
 import {
   CATEGORIAS,
   FICHAS,
@@ -95,6 +104,31 @@ export type DadosState = BancoMock & {
   }) => { contagem: Contagem; totalReais: number; relevantes: ItemContagem[] };
   /** Transfere insumos entre lojas: saída numa, entrada na outra. */
   registrarTransferencia: (transferencia: Transferencia) => void;
+
+  // ---- Financeiro / caixa (Fase 7) ----
+  /**
+   * Fecha a sessão de caixa às cegas: calcula o esperado por forma a partir dos
+   * pagamentos da sessão, compara com o informado e grava a diferença. Qualquer
+   * diferença (≠ 0) gera EventoAuditoria. Retorna o fechamento para a tela de
+   * resultado.
+   */
+  fecharCaixa: (args: {
+    sessaoId: string;
+    informado: ValoresPorForma;
+  }) => FechamentoPorForma | null;
+  /** Registra uma sangria (retirada) na sessão aberta. Entra no esperado. */
+  registrarSangria: (args: {
+    sessaoId: string;
+    valor: number;
+    motivo: string;
+    autorizadorId: UsuarioId;
+  }) => void;
+  /** Registra um suprimento (entrada de troco) na sessão aberta. */
+  registrarSuprimento: (args: { sessaoId: string; valor: number; motivo: string }) => void;
+  /** Marca uma despesa como paga agora. */
+  marcarDespesaPaga: (despesaId: string) => void;
+  /** Acrescenta uma despesa (conta a pagar). */
+  adicionarDespesa: (despesa: Despesa) => void;
 };
 
 // Estado inicial LEVE: dados estáticos + coleções geradas vazias. O seed pesado
@@ -447,13 +481,133 @@ export const useDadosStore = create<DadosState>()(
             eventos: [...s.eventos, evento],
           };
         }),
+
+      fecharCaixa: ({ sessaoId, informado }) => {
+        const s = get();
+        const sessao = s.sessoesCaixa.find((x) => x.id === sessaoId);
+        if (!sessao || sessao.fechamento) return null;
+
+        const agora = agoraISO();
+        const vendas = vendasDaSessao(s, sessao, new Date(agora));
+        const totalSangrias = sessao.sangrias.reduce((t, x) => t + x.valor, 0);
+        const totalSuprimentos = (sessao.suprimentos ?? []).reduce((t, x) => t + x.valor, 0);
+        const fech = fecharCaixaCegoPorForma({
+          valorInicial: sessao.valorInicial,
+          vendas,
+          totalSangrias,
+          totalSuprimentos,
+          informado,
+        });
+
+        const sessoesCaixa = s.sessoesCaixa.map((x) =>
+          x.id !== sessaoId
+            ? x
+            : {
+                ...x,
+                fechamento: agora,
+                valorInformado: informado.dinheiro,
+                valorEsperado: fech.esperado.dinheiro,
+                diferenca: fech.diferencaTotal,
+                esperadoPorForma: fech.esperado,
+                informadoPorForma: fech.informado,
+                diferencaPorForma: fech.diferenca,
+              },
+        );
+
+        const eventos = [...s.eventos];
+        // Qualquer diferença gera registro de auditoria (crítico se relevante).
+        if (Math.abs(fech.diferencaTotal) > 0.005) {
+          const formasComDif = (Object.keys(fech.diferenca) as (keyof ValoresPorForma)[])
+            .filter((f) => Math.abs(fech.diferenca[f]) > 0.005)
+            .map((f) => `${ROTULO_FORMA[f]} ${formatBRLSinalado(fech.diferenca[f])}`)
+            .join(", ");
+          eventos.push(
+            registrarEvento(
+              {
+                tipo: "caixa_diferenca",
+                lojaId: sessao.lojaId,
+                usuarioId: sessao.usuarioId,
+                descricao: `Caixa fechou com diferença de ${formatBRLSinalado(fech.diferencaTotal)}${formasComDif ? ` (${formasComDif})` : ""}`,
+                valorImpacto: fech.diferencaTotal,
+                severidade: Math.abs(fech.diferencaTotal) >= 15 ? "critico" : "info",
+                refId: sessaoId,
+              },
+              novoId("ev"),
+              agora,
+            ),
+          );
+        }
+
+        set({ sessoesCaixa, eventos });
+        return fech;
+      },
+
+      registrarSangria: ({ sessaoId, valor, motivo, autorizadorId }) =>
+        set((s) => {
+          const sessao = s.sessoesCaixa.find((x) => x.id === sessaoId);
+          if (!sessao) return {};
+          const data = agoraISO();
+          const sessoesCaixa = s.sessoesCaixa.map((x) =>
+            x.id !== sessaoId
+              ? x
+              : {
+                  ...x,
+                  sangrias: [
+                    ...x.sangrias,
+                    { id: novoId("sang"), valor, motivo, data, autorizadorId },
+                  ],
+                },
+          );
+          // Retirada de dinheiro é sensível (PIN) → fica na auditoria, com quem
+          // operou e quem autorizou.
+          const evento = registrarEvento(
+            {
+              tipo: "sangria",
+              lojaId: sessao.lojaId,
+              usuarioId: sessao.usuarioId,
+              autorizadoPor: autorizadorId,
+              descricao: `Sangria de ${formatBRLSinalado(-valor)} do caixa (${motivo})`,
+              valorImpacto: -valor,
+              severidade: "info",
+              refId: sessaoId,
+            },
+            novoId("ev"),
+            data,
+          );
+          return { sessoesCaixa, eventos: [...s.eventos, evento] };
+        }),
+
+      registrarSuprimento: ({ sessaoId, valor, motivo }) =>
+        set((s) => ({
+          sessoesCaixa: s.sessoesCaixa.map((x) =>
+            x.id !== sessaoId
+              ? x
+              : {
+                  ...x,
+                  suprimentos: [
+                    ...(x.suprimentos ?? []),
+                    { id: novoId("supr"), valor, motivo, data: agoraISO() },
+                  ],
+                },
+          ),
+        })),
+
+      marcarDespesaPaga: (despesaId) =>
+        set((s) => ({
+          despesas: s.despesas.map((d) =>
+            d.id === despesaId && !d.pagoEm ? { ...d, pagoEm: agoraISO() } : d,
+          ),
+        })),
+
+      adicionarDespesa: (despesa) =>
+        set((s) => ({ despesas: [...s.despesas, despesa] })),
     }),
     {
       name: "cereja-dados",
-      // v4 (Fase 6): o seed mudou (teórico na data da contagem, movimentações)
-      // e entraram ações de compra/contagem/transferência. Subir a versão
-      // descarta o cache v3 e o useHidratado regenera o seed.
-      version: 4,
+      // v5 (Fase 7): sessões de caixa com fechamento por forma + despesas
+      // avulsas no seed; ações de fechar caixa/sangria/suprimento/despesa.
+      // Subir a versão descarta o cache v4 e o useHidratado regenera o seed.
+      version: 6,
       storage: createJSONStorage(() => storage),
       partialize: (s) => ({
         dataAncora: s.dataAncora,

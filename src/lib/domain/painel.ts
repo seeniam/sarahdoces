@@ -157,6 +157,36 @@ export interface MetricasPainel {
   };
 }
 
+/**
+ * DRE do período: Faturamento − CMV − Perdas − Despesas = Lucro.
+ * FONTE ÚNICA — o painel (lucro estimado) e o /financeiro (cascata) usam esta
+ * mesma função, então os números batem exatamente (coberto por teste).
+ */
+export function dreDoPeriodo(
+  banco: BancoMock,
+  filtro: LojaFiltro,
+  periodo: Periodo,
+  agora: Date,
+): DRE {
+  const j = janelasDoPeriodo(periodo, agora);
+  const custoPorProduto = new Map(banco.produtos.map((p) => [p.id, p.custo]));
+
+  let faturamento = 0;
+  let cmv = 0;
+  for (const c of banco.comandas) {
+    if (c.status !== "paga" || !noFiltro(c.lojaId, filtro)) continue;
+    if (!emJanela(c.pagaEm, j.atual)) continue;
+    faturamento += faturamentoDeComanda(c);
+    cmv += cmvDeComanda(c, custoPorProduto);
+  }
+  const perdas = banco.perdas.reduce(
+    (s, p) => (noFiltro(p.lojaId, filtro) && emJanela(p.data, j.atual) ? s + p.custo : s),
+    0,
+  );
+  const despesas = despesasDoPeriodo(banco, filtro, j);
+  return calcularDRE({ faturamento, cmv, perdas, despesas });
+}
+
 /** Todas as métricas-chave do período. */
 export function metricasPainel(
   banco: BancoMock,
@@ -165,20 +195,17 @@ export function metricasPainel(
   agora: Date,
 ): MetricasPainel {
   const j = janelasDoPeriodo(periodo, agora);
-  const custoPorProduto = new Map(banco.produtos.map((p) => [p.id, p.custo]));
 
   const atual = resumoVendas(banco.comandas, filtro, j.atual);
   const comp = resumoVendas(banco.comandas, filtro, j.comparacao);
 
   let descontos = 0;
-  let cmv = 0;
   let somaPreparo = 0;
   let nPreparo = 0;
   for (const c of banco.comandas) {
     if (c.status !== "paga" || !noFiltro(c.lojaId, filtro)) continue;
     if (!emJanela(c.pagaEm, j.atual)) continue;
     descontos += c.desconto ?? 0;
-    cmv += cmvDeComanda(c, custoPorProduto);
     if (c.enviadaEm && c.prontaEm) {
       somaPreparo +=
         (new Date(c.prontaEm).getTime() - new Date(c.enviadaEm).getTime()) /
@@ -187,12 +214,7 @@ export function metricasPainel(
     }
   }
 
-  const perdas = banco.perdas.reduce(
-    (s, p) => (noFiltro(p.lojaId, filtro) && emJanela(p.data, j.atual) ? s + p.custo : s),
-    0,
-  );
-  const despesas = despesasDoPeriodo(banco, filtro, j.dias);
-  const dre = calcularDRE({ faturamento: atual.faturamento, cmv, perdas, despesas });
+  const dre = dreDoPeriodo(banco, filtro, periodo, agora);
 
   const varia = (a: number, b: number): number | null =>
     b > 0 ? (a - b) / b : null;
@@ -218,18 +240,22 @@ export function metricasPainel(
 export function despesasDoPeriodo(
   banco: BancoMock,
   filtro: LojaFiltro,
-  dias: number,
+  janela: Janelas,
 ): number {
-  let mensal = 0;
+  // Recorrentes (aluguel, folha…): rateadas por dia. Avulsas: valor cheio só
+  // quando a conta cai no período (por pagoEm ou vencimento) — não se amortizam.
+  let mensalRecorrente = 0;
+  let avulsasNoPeriodo = 0;
   for (const d of banco.despesas) {
-    if (filtro !== "todas") {
-      if (d.lojaId && d.lojaId !== filtro) continue;
-      mensal += d.lojaId ? d.valor : d.valor / 2; // sem loja = rateio entre as 2
-    } else {
-      mensal += d.valor;
+    if (filtro !== "todas" && d.lojaId && d.lojaId !== filtro) continue;
+    const peso = filtro !== "todas" && !d.lojaId ? 0.5 : 1; // sem loja = rateio entre as 2
+    if (d.recorrente) {
+      mensalRecorrente += d.valor * peso;
+    } else if (emJanela(d.pagoEm ?? d.vencimento, janela.atual)) {
+      avulsasNoPeriodo += d.valor * peso;
     }
   }
-  return (mensal / 30) * dias;
+  return (mensalRecorrente / 30) * janela.dias + avulsasNoPeriodo;
 }
 
 // --- Gráficos ---
@@ -426,7 +452,7 @@ export function alertasPainel(
       id: "risco-cancelamento",
       severidade: "atencao",
       texto: `${topo.nome} cancelou ${topo.cancelamentos} itens esta semana — ${topo.explicacao.replace(/^.*?cancelou /, "").replace(`${topo.nome} `, "")} (${brl(topo.valorImpacto)})`,
-      href: "/auditoria",
+      href: `/auditoria?aba=atencao&pessoa=${topo.usuarioId}`,
     });
   }
 
@@ -465,7 +491,7 @@ export function alertasPainel(
       id: "caixa-diferenca",
       severidade: "critico",
       texto: `Caixa da ${nomeLoja(caixaRuim.lojaId)} fechou com ${sinal}${brl(caixaRuim.diferenca ?? 0)}`,
-      href: "/financeiro",
+      href: "/auditoria?tipo=caixa_diferenca",
     });
   }
 

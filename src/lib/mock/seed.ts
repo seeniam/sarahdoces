@@ -21,7 +21,7 @@ import type {
 } from "@/types";
 import { criarRng } from "./rng";
 import { consumoDaComanda } from "@/lib/domain/estoque";
-import { fecharCaixaCego } from "@/lib/domain/financeiro";
+import { fecharCaixaCegoPorForma } from "@/lib/domain/financeiro";
 import { formatBRL, formatBRLSinalado, formatQuantidade } from "@/lib/format";
 import {
   CATEGORIAS,
@@ -41,7 +41,7 @@ const TZ_OFFSET = "-03:00";
 const DIAS = 30;
 const SEED = 42;
 /** Bump invalida o cache persistido (força re-seed). */
-export const VERSAO_SEED = 3;
+export const VERSAO_SEED = 5;
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /** Data de hoje (YYYY-MM-DD) no fuso de São Luís. */
@@ -611,33 +611,45 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
         // Janela do dia em horário de São Luís (instantes UTC): [00:00, próximo 00:00)
         const inicioDia = dataNoDia(offset, 0, 0);
         const inicioProximo = dataNoDia(offset + 1, 0, 0);
-        const dinheiroDoDia = pagamentos
-          .filter(
-            (p) =>
-              p.forma === "dinheiro" &&
-              p.lojaId === loja.id &&
-              p.data >= inicioDia &&
-              p.data < inicioProximo &&
-              atendenteDaComanda.get(p.comandaId) === atendenteId,
-          )
-          .reduce((s, p) => s + p.valor, 0);
+        // Vendas do dia por forma (Pix fica fora do caixa físico).
+        const vendas = { dinheiro: 0, debito: 0, credito: 0 };
+        for (const p of pagamentos) {
+          if (
+            p.lojaId !== loja.id ||
+            p.data < inicioDia ||
+            p.data >= inicioProximo ||
+            atendenteDaComanda.get(p.comandaId) !== atendenteId ||
+            p.forma === "pix"
+          ) {
+            continue;
+          }
+          vendas[p.forma] += p.valor;
+        }
 
         const valorInicial = 100;
         const totalSangrias = rng.chance(0.2) ? rng.pick([50, 100]) : 0;
 
-        // Anomalia: um fechamento com −R$ 37,00 (Camila / Loja 2)
+        // Anomalia: um fechamento com −R$ 37,00 em dinheiro (Camila / Loja 2)
         const anomalia =
           loja.id === "loja-2" && atendenteId === "u-camila" && offset === DIAS - 4;
-        const ruido = anomalia ? -37 : rng.pick([0, 0, 0, 0, -2, 3, -5]);
+        const ruidoDinheiro = anomalia ? -37 : rng.pick([0, 0, 0, 0, -2, 3, -5]);
 
-        const esperadoBase = valorInicial + dinheiroDoDia - totalSangrias;
-        const valorInformado = Number((esperadoBase + ruido).toFixed(2));
-        const { valorEsperado, diferenca } = fecharCaixaCego({
+        const esperadoDinheiro = valorInicial + vendas.dinheiro - totalSangrias;
+        // No mundo real, cartão quase nunca "sobra/falta" (vem da maquininha);
+        // o atendente informa exatamente o relatório. A diferença mora no dinheiro.
+        const informado = {
+          dinheiro: Number((esperadoDinheiro + ruidoDinheiro).toFixed(2)),
+          debito: Number(vendas.debito.toFixed(2)),
+          credito: Number(vendas.credito.toFixed(2)),
+        };
+        const fech = fecharCaixaCegoPorForma({
           valorInicial,
-          totalDinheiro: dinheiroDoDia,
+          vendas,
           totalSangrias,
-          valorInformado,
+          totalSuprimentos: 0,
+          informado,
         });
+        const diferenca = fech.diferencaTotal;
 
         const id = `sess-${(++seqSessao).toString().padStart(4, "0")}`;
         sessoesCaixa.push({
@@ -647,12 +659,16 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
           abertura: dataNoDia(offset, 6, 0),
           fechamento: dataNoDia(offset, 21, 0),
           valorInicial,
-          valorInformado,
-          valorEsperado,
-          diferenca: Number(diferenca.toFixed(2)),
+          valorInformado: informado.dinheiro,
+          valorEsperado: fech.esperado.dinheiro,
+          diferenca,
+          esperadoPorForma: fech.esperado,
+          informadoPorForma: fech.informado,
+          diferencaPorForma: fech.diferenca,
           sangrias: totalSangrias
-            ? [{ id: `sang-${id}`, valor: totalSangrias, motivo: "depósito", data: dataNoDia(offset, 14, 0) }]
+            ? [{ id: `sang-${id}`, valor: totalSangrias, motivo: "Depósito bancário", data: dataNoDia(offset, 14, 0) }]
             : [],
+          suprimentos: [],
         });
 
         if (Math.abs(diferenca) >= 15) {
@@ -689,6 +705,7 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
       descricao,
       categoria,
       valor,
+      recorrente: true,
       ...(lojaId ? { lojaId } : {}),
       vencimento: new Date(
         `${rel.ano}-${pad(rel.mes)}-${pad(diaVenc)}T00:00:00${TZ_OFFSET}`,
@@ -699,6 +716,34 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
               `${rel.ano}-${pad(rel.mes)}-${pad(diaVenc)}T10:00:00${TZ_OFFSET}`,
             ).toISOString()
           : undefined,
+    });
+  });
+
+  // Despesas avulsas ancoradas em HOJE, para a aba Contas a pagar ter uma
+  // vencida, uma vencendo em breve, uma a vencer e uma recém-paga.
+  const dataRelHoje = (deltaDias: number, hora = 0) => {
+    const d = new Date(ancoraUTC);
+    d.setUTCDate(d.getUTCDate() + deltaDias);
+    return new Date(
+      `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(hora)}:00:00${TZ_OFFSET}`,
+    ).toISOString();
+  };
+  const avulsas: [string, Despesa["categoria"], number, number, boolean, LojaId?][] = [
+    // [descrição, categoria, valor, vencimento(Δdias de hoje), paga?, loja?]
+    ["Conserto da geladeira", "manutencao", 680, -2, false, "loja-1"],
+    ["Fornecedor de embalagens", "outros", 420, 2, false, "loja-2"],
+    ["Material de limpeza", "outros", 260, 9, false],
+    ["Contador (mensal)", "impostos", 900, -5, true],
+  ];
+  avulsas.forEach(([descricao, categoria, valor, dv, paga, lojaId], i) => {
+    despesas.push({
+      id: `desp-av-${(i + 1).toString().padStart(3, "0")}`,
+      descricao,
+      categoria,
+      valor,
+      ...(lojaId ? { lojaId } : {}),
+      vencimento: dataRelHoje(dv),
+      pagoEm: paga ? dataRelHoje(dv, 11) : undefined,
     });
   });
 

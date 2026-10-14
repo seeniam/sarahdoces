@@ -299,3 +299,57 @@ Revisão em workflow (4 dimensões + verificação por achado). Aplicados:
 Mantido de propósito: o bloco "Para onde foi a carne?" é **sempre 7 dias até a
 contagem** (não segue o seletor 7/30 do painel de perdas), para a conta bater
 exatamente com o alerta do painel; o cabeçalho diz "Últimos 7 dias".
+
+## Fase 7 — Financeiro e Auditoria
+
+### D7.1 — Fechamento de caixa é por forma de pagamento (Pix fora)
+`SessaoCaixa` ganhou `esperadoPorForma`/`informadoPorForma`/`diferencaPorForma`
+(dinheiro, débito, crédito). O atendente informa às cegas os três; **Pix não
+entra** ("confere direto pelo banco"). O dinheiro esperado considera o troco
+inicial, as sangrias (saem) e os suprimentos (entram); débito/crédito são as
+vendas na forma. `diferenca` (escalar, compat) passou a ser a soma das três.
+Função única: `fecharCaixaCegoPorForma` (seed e store usam a mesma).
+
+### D7.2 — Qualquer diferença gera evento; o painel só alerta se relevante
+`fecharCaixa` cria um `EventoAuditoria` sempre que a diferença ≠ 0 (crítico se
+|dif| ≥ R$ 15, senão info). O alerta do painel continua filtrando por |dif| ≥ 15,
+então diferenças pequenas ficam na auditoria sem "gritar" na tela da Dona.
+
+### D7.3 — DRE e lucro do painel são a MESMA função
+`dreDoPeriodo()` (em `lib/domain/painel.ts`) é a fonte única: o "lucro estimado"
+do painel e a cascata da `/financeiro` chamam-na. Teste cobre que batem nos três
+períodos. A cascata é um waterfall clicável (cada degrau abre o detalhe).
+
+### D7.4 — Auditoria é só leitura (imutável)
+Não existe ação de editar/apagar evento no store nem na UI; a tela diz
+"Registros de auditoria não podem ser alterados". O `registrarEvento` só
+acrescenta (append-only). Teste garante que `pontosDeAtencao` não muta o banco.
+
+### D7.5 — "Pontos de atenção" em linguagem neutra
+A tela e a função `pontosDeAtencao` nunca usam "suspeito", "fraude" ou "risco"
+no texto visível (teste verifica). Mostra indicadores vs. a média da equipe e a
+observação fixa: "Padrões fora da média indicam onde conversar e acompanhar, não
+comprovam irregularidade." Motivo: a Sarah usa isso com funcionários reais.
+
+### D7.6 — Alertas do painel são deep-links
+O alerta de cancelamentos leva a `/auditoria?aba=atencao&pessoa=<id>`; o de caixa
+a `/auditoria?tipo=caixa_diferenca`; o de divergência continua indo ao extrato
+em `/estoque` (onde se investiga a falta). A `/auditoria` lê esses parâmetros.
+
+### D7.7 — "Fechar caixa" vive no PDV, não no menu global
+O controle de caixa (status + sangria/suprimento/fechar) fica na coluna da
+comanda no desktop e numa faixa no topo no celular. Sangria exige PIN de
+gerente/dona (reusa `PinAutorizacao`); suprimento não.
+
+### D7.8 — Correções da revisão adversarial da Fase 7
+- **Despesa recorrente × avulsa**: `Despesa` ganhou `recorrente`. Custos fixos
+  (aluguel, folha…) são rateados por dia na DRE; contas avulsas contam pelo
+  valor cheio só quando caem no período (por `pagoEm`/vencimento). Antes, as
+  avulsas eram amortizadas como se fossem mensais, distorcendo o lucro.
+- **Fluxo de caixa**: despesas sem loja passaram a ser rateadas (÷2) quando se
+  filtra uma loja, em vez de sumirem (igual à DRE).
+- **Sangria na auditoria**: a retirada guarda quem autorizou (`Sangria.autorizadorId`)
+  e gera um `EventoAuditoria` do tipo novo `"sangria"` (o PIN agora deixa rastro).
+- Menores: "Pago no mês" conta só pagamentos do mês corrente; DRE do Faturamento
+  mostra "Pix" (não o id cru); filtro de tipo da URL validado; quebra do fluxo em
+  cartões no 390; keys estáveis no detalhe da DRE.

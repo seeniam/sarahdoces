@@ -1,13 +1,12 @@
-import { Placeholder } from "@/components/shared/Placeholder";
+import { Suspense } from "react";
+import { AuditoriaClient } from "@/components/auditoria/AuditoriaClient";
 
 export const metadata = { title: "Auditoria" };
 
 export default function Page() {
   return (
-    <Placeholder
-      titulo="Auditoria — o Olho da Dona"
-      descricao="Cada cancelamento, desconto e diferença de caixa, com quem fez, quem autorizou e o score de risco."
-      fase="Fase 7"
-    />
+    <Suspense fallback={<div className="h-64 animate-pulse rounded-[20px] bg-muted" />}>
+      <AuditoriaClient />
+    </Suspense>
   );
 }

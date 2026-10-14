@@ -55,3 +55,30 @@ describe("scoreDeRisco", () => {
     expect(risco[0].explicacao).toContain("3×");
   });
 });
+
+import { pontosDeAtencao } from "./auditoria";
+import { gerarSeed } from "@/lib/mock/seed";
+
+describe("pontosDeAtencao", () => {
+  const AGORA = new Date("2026-10-14T17:00:00-03:00");
+  const banco = gerarSeed(AGORA);
+  const de = new Date(AGORA.getTime() - 7 * 86400000);
+
+  it("destaca o Thiago (cancelamentos acima da média) sem usar palavra de acusação", () => {
+    const pontos = pontosDeAtencao(banco, de, AGORA);
+    const thiago = pontos.find((p) => p.nome === "Thiago");
+    expect(thiago).toBeDefined();
+    // Thiago cancela ~3× mais (plantado no seed).
+    expect(thiago!.cancelamentos).toBeGreaterThanOrEqual(3);
+    const texto = pontos.flatMap((p) => p.observacoes).join(" ").toLowerCase();
+    for (const proibida of ["suspeito", "fraude", "risco"]) {
+      expect(texto).not.toContain(proibida);
+    }
+  });
+
+  it("não muta o banco (auditoria é só leitura)", () => {
+    const antesEventos = banco.eventos.length;
+    pontosDeAtencao(banco, de, AGORA);
+    expect(banco.eventos.length).toBe(antesEventos);
+  });
+});

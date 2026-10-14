@@ -17,6 +17,8 @@ import { CategoriaRail } from "./CategoriaRail";
 import { GradeProdutos } from "./GradeProdutos";
 import { ComandaViva } from "./ComandaViva";
 import { AberturaCaixa } from "./AberturaCaixa";
+import { CaixaControle } from "./CaixaControle";
+import { FecharCaixaSheet } from "./FecharCaixaSheet";
 import { PinAutorizacao } from "./PinAutorizacao";
 import { ImpressaoComanda } from "./ImpressaoComanda";
 import { Pagamento, type PagamentoFeito } from "./Pagamento";
@@ -36,6 +38,7 @@ import type {
   Pagamento as TPagamento,
   SessaoCaixa,
   Usuario,
+  ValoresPorForma,
 } from "@/types";
 
 const PRESET_DESCONTO = [2, 3, 5, 10];
@@ -66,6 +69,7 @@ export function PdvClient() {
   const usuarios = useDadosStore((s) => s.usuarios);
   const produtos = useDadosStore((s) => s.produtos);
   const categorias = useDadosStore((s) => s.categorias);
+  const lojas = useDadosStore((s) => s.lojas);
   const comandas = useDadosStore((s) => s.comandas);
   const sessoesCaixa = useDadosStore((s) => s.sessoesCaixa);
   const enviarComandaStore = useDadosStore((s) => s.enviarComanda);
@@ -73,6 +77,7 @@ export function PdvClient() {
   const cancelarItemComanda = useDadosStore((s) => s.cancelarItemComanda);
   const registrarPagamento = useDadosStore((s) => s.registrarPagamento);
   const abrirCaixaStore = useDadosStore((s) => s.abrirCaixa);
+  const fecharCaixaStore = useDadosStore((s) => s.fecharCaixa);
   const adicionarEvento = useDadosStore((s) => s.adicionarEvento);
 
   const cart = useComandaStore();
@@ -84,6 +89,8 @@ export function PdvClient() {
   const sessaoAberta = sessoesCaixa.find(
     (s) => s.lojaId === lojaAtual && s.usuarioId === usuarioId && !s.fechamento,
   );
+  const lojaNome =
+    lojas.find((l) => l.id === lojaAtual)?.nome.replace(/^Loja \d+\s*[—-]\s*/, "") ?? "";
 
   const iconePorCategoria = useMemo(
     () =>
@@ -95,6 +102,7 @@ export function PdvClient() {
   );
 
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
+  const [fecharCaixaAberto, setFecharCaixaAberto] = useState(false);
   const [descontoAberto, setDescontoAberto] = useState(false);
   const [descontoValor, setDescontoValor] = useState(0);
   const [cortesia, setCortesia] = useState(false);
@@ -216,6 +224,13 @@ export function PdvClient() {
     });
   }
 
+  // Fechar caixa é gerido aqui (não dentro do CaixaControle), para a folha de
+  // conferência sobreviver ao fim da sessão (que desmonta o CaixaControle).
+  function aoFecharCaixa(informado: ValoresPorForma) {
+    if (!sessaoAberta) return null;
+    return fecharCaixaStore({ sessaoId: sessaoAberta.id, informado });
+  }
+
   function receber(feitos: PagamentoFeito[]) {
     if (!pagamentoComanda) return;
     const data = agoraISO();
@@ -306,6 +321,15 @@ export function PdvClient() {
 
   return (
     <div className="flex h-full flex-col gap-4 lg:flex-row">
+      {/* Controle de caixa (mobile: no topo; desktop: na coluna da comanda) */}
+      {sessaoAberta && (
+        <CaixaControle
+          sessao={sessaoAberta}
+          onFecharCaixa={() => setFecharCaixaAberto(true)}
+          className="lg:hidden"
+        />
+      )}
+
       {/* Trilho de categorias */}
       <div className="shrink-0 lg:w-24">
         <CategoriaRail
@@ -327,6 +351,9 @@ export function PdvClient() {
 
       {/* Coluna da comanda (desktop): Comandas abertas no topo + comanda viva */}
       <div className="hidden w-[360px] shrink-0 flex-col gap-3 lg:flex">
+        {sessaoAberta && (
+          <CaixaControle sessao={sessaoAberta} onFecharCaixa={() => setFecharCaixaAberto(true)} />
+        )}
         {abertas.length > 0 && (
           <ComandasAbertasSheet
             abertas={abertas}
@@ -375,8 +402,17 @@ export function PdvClient() {
         </Sheet>
       </div>
 
-      {/* Abertura de caixa obrigatória */}
-      <AberturaCaixa aberto={!sessaoAberta} onAbrir={abrirCaixa} />
+      {/* Abertura de caixa obrigatória (não reabre enquanto a conferência
+          do fechamento ainda está na tela). */}
+      <AberturaCaixa aberto={!sessaoAberta && !fecharCaixaAberto} onAbrir={abrirCaixa} />
+
+      {/* Fechamento cego (gerido no PDV para sobreviver ao fim da sessão) */}
+      <FecharCaixaSheet
+        aberto={fecharCaixaAberto}
+        onOpenChange={setFecharCaixaAberto}
+        lojaNome={lojaNome}
+        onFechar={aoFecharCaixa}
+      />
 
       {/* Desconto / cortesia com PIN */}
       <PinAutorizacao

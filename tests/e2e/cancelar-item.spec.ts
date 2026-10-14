@@ -32,8 +32,10 @@ test("cancelar item: atendente é barrado, gerente autoriza, item fica riscado",
   await enviarComanda(page);
 
   await page.getByRole("button", { name: /Comandas abertas/ }).click();
-  // Botão discreto "Cancelar" por item (≠ "Cancelar comanda").
-  await page.getByRole("button", { name: "Cancelar", exact: true }).first().click();
+  // Botão discreto "Cancelar" por item (≠ "Cancelar comanda"). Usamos o ÚLTIMO
+  // item: a comanda recém-criada é a última da lista (as comandas "em andamento"
+  // do seed dependem do horário), e tem 2 itens — cancelar um a mantém aberta.
+  await page.getByRole("button", { name: "Cancelar", exact: true }).last().click();
 
   // Escolhe o motivo.
   await page.getByRole("button", { name: "Cliente desistiu" }).click();
@@ -50,7 +52,7 @@ test("cancelar item: atendente é barrado, gerente autoriza, item fica riscado",
 
   // Via de CANCELAMENTO para a cozinha.
   await expect(page.getByText("Cancelamento")).toBeVisible();
-  await page.getByRole("button", { name: /Fechar/ }).click();
+  await page.getByRole("button", { name: "Fechar", exact: true }).click();
 
   // O item aparece riscado com autorizador e motivo.
   await page.getByRole("button", { name: /Comandas abertas/ }).click();
