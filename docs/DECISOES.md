@@ -1,75 +1,8 @@
 # Decisões — Sistema "Cereja"
 
 Registro curto de escolhas feitas quando algo era ambíguo ou precisava ser
-resolvido (CLAUDE.md: "escolha o mais simples e anote aqui").
-
-## Fase 4 — KDS + cancelar item (decisões do arquiteto)
-
-### D4.1 — Item da comanda é referenciado por índice (sem id próprio)
-`ItemComanda` ganhou campos opcionais de cancelamento (`cancelado`,
-`canceladoPor`, `motivoCancelamento`, `canceladoEm`, `canceladoAposPreparo`),
-mas **não** ganhou `id`. As stores já operam por índice e o seed não gera ids;
-o cancelamento referencia `{comandaId, itemIndex}`. Campos opcionais = seed e
-persistência antigos continuam válidos. `MotivoPerda` ganhou
-`cancelado_apos_preparo`. `persist.version` subiu 2→3 (sem migração destrutiva).
-
-### D4.2 — Estorno × perda decidido pelo status ATUAL da comanda
-Ao cancelar um item: comanda ainda `enviada` (na fila) → **estorna** o estoque;
-`preparando`/`pronta` (já foi para a chapa) → vira **Perda** automática
-(`cancelado_apos_preparo`). A `cancelarItemComanda` relê o status do estado
-fresco (não de um snapshot) para não errar o ramo se o KDS avançar o status
-enquanto o PIN está aberto, e retorna `{ok, jaPreparado}` para o PdvClient só
-gerar EventoAuditoria + ticket quando o cancelamento realmente ocorre. Se o
-último item ativo for cancelado, a comanda inteira vira `cancelada`.
-
-### D4.3 — /cozinha fora do AppShell, com guard próprio
-A rota `/cozinha` já fica fora do grupo `(app)` (tela cheia, sem sidebar). O KDS
-replica o guard do AppShell (useHidratado → sessão → `podeAcessarRota`). Só o
-perfil **cozinha** acessa; cada cozinheiro vê a sua loja (Seu Antônio = Loja 1,
-Dona Lúcia = Loja 2). O destaque/som de "pedido novo" só dispara após a
-hidratação, para não acender todos os cartões ao carregar.
-
-### D4.4 — Sons sintetizados (sem asset) e o toggle
-Som de impressão (pendência 16) e sino de pedido novo do KDS são **sintetizados
-via Web Audio API** (sem mp3 em `public/`). O toggle "Som de impressão" (menu do
-usuário, OFF por padrão) governa o som de impressão do PDV; o sino do KDS toca
-best-effort (recurso central da cozinha), silencioso se o autoplay for bloqueado.
-
-### D4.5 — QR do Pix com selo "Demonstração" (pendência 14)
-Selo diagonal discreto sobre o QR, em cinza (não vermelho — a direção de arte
-evita confundir a marca com erro).
-
-## Fase 5 — Painel da Dona
-
-### D5.1 — Comparação justa e janelas no fuso de Fortaleza
-As métricas vivem em `lib/domain/painel.ts` (puras, testadas). "Hoje" compara
-com o MESMO dia da semana passada até o mesmo horário decorrido; "7/30 dias"
-comparam com o período imediatamente anterior de mesmo tamanho. Tudo calculado
-no fuso América/Fortaleza. Faturamento = itens ativos − desconto (cancelados
-fora); descontos aparecem como linha própria.
-
-### D5.2 — Lucro estimado e rateio das despesas fixas
-`Lucro estimado = faturamento − CMV − perdas − despesas`, com as despesas fixas
-mensais rateadas por dia (mensal/30 × dias do período) e metade para cada loja
-quando a despesa não tem loja. Rotulado "estimado" + sheet "Como calculamos".
-
-### D5.3 — Volume do seed calibrado para um negócio saudável
-A base de comandas/dia subiu para 56 (Centro) / 46 (Cohama) para que o
-faturamento supere com folga as despesas fixas (R$ 21.700/mês) e o painel mostre
-um lucro plausível — antes o volume era baixo demais e o "lucro estimado" saía
-negativo. As compras do seed escalam com o consumo, então o estoque continua
-saudável. Determinismo preservado (contagem por índice/dia estável).
-
-### D5.4 — Ao vivo entre abas
-O painel recalcula tudo a partir do `useDadosStore` (sincronizado entre abas por
-`sync.ts`). Uma venda paga noutra aba aparece sem recarregar; um efeito observa o
-último pagamento e mostra o aviso "Nova venda · … · R$ …" (só para vendas novas,
-nunca na carga inicial). O número-herói faz uma transição curta ao mudar.
-
-### D5.5 — Estados
-Antes das 6h30 (Fortaleza), "hoje" mostra um estado próprio ("A loja ainda não
-abriu. Ontem: R$ X") em vez de gráficos zerados. A hidratação é coberta pelo
-skeleton do AppShell.
+resolvido (CLAUDE.md: "escolha o mais simples e anote aqui"). Seções em ordem de
+fase.
 
 ## Fase 0 — Setup e fundação visual
 
@@ -114,6 +47,11 @@ escuro é o "cacau" da direção de arte.
 O scaffold ligou o Tailwind v4 pelo loader `@tailwindcss/turbopack` no
 `next.config.ts` (sem `postcss.config`/`tailwind.config`). Mantido assim.
 
+### D0.7 — Imagens de fallback
+Sem o logo e as fotos reais ainda, usamos a marca SVG própria e 7 fotos de banco
+livre (Unsplash) baixadas para `public/images`. Créditos em
+`public/images/CREDITOS.md`; pendências em `docs/PENDENCIAS-CLIENTE.md`.
+
 ## Fase 1 — Tipos, dados mock e regras de negócio
 
 ### D1.1 — Stores: consolidados + hidratação pós-montagem
@@ -122,7 +60,7 @@ localStorage), um `useDadosStore` (banco inteiro) + `useSessaoStore` (usuário/
 loja). Os domínios são acessados por seletores. Ambos usam `skipHydration: true`
 e re-hidratam no hook `useHidratado` (pós-montagem) — assim servidor e primeiro
 render do cliente mostram o mesmo estado inicial (sem mismatch). Sincronização
-entre abas por BroadcastChannel (avisa "mudou" → as outras re-hidratam).
+entre abas por `storage`/BroadcastChannel (reaplica o estado nas outras abas).
 
 ### D1.2 — Datas do seed no fuso de São Luís (determinístico)
 O seed constrói instantes com offset explícito `-03:00` e aritmética de
@@ -180,10 +118,11 @@ comandas ENVIADAS ficam no `useDadosStore`). Mutações de runtime (enviar
 comanda + baixa de estoque, pagamento, abrir caixa, evento) ficam em ações do
 `useDadosStore`.
 
-### D3.2 — Autorização por PIN: desconto/cortesia (carrinho) e cancelar comanda
+### D3.2 — Autorização por PIN: desconto/cortesia (carrinho) e cancelamento
 No carrinho, editar +/−/remover é livre (é rascunho). O que exige PIN de
 gerente/dona + motivo e gera EventoAuditoria é **Desconto/Cortesia** (vetor de
-fraude de preço) — e o cancelamento de uma comanda já ENVIADA (Fase 8). O PIN de
+fraude de preço) e o **cancelamento de uma comanda já ENVIADA**; o cancelamento
+de **item** após o envio entrou no escopo na Fase 4 (ver D4.2). O PIN de
 atendente é recusado (demonstra "desconto sem PIN"). Preço nunca é editável.
 
 ### D3.3 — Impressão da comanda (80mm)
@@ -191,11 +130,6 @@ atendente é recusado (demonstra "desconto sem PIN"). Preço nunca é editável.
 CSS `@media print` (@page 80mm). O "momento" (comanda saindo impressa) é um
 clip-path de ~700ms, respeitando prefers-reduced-motion. O `window.print()`
 imprime só o cupom.
-
-### D0.7 — Imagens de fallback
-Sem o logo e as fotos reais ainda, usamos a marca SVG própria e 7 fotos de banco
-livre (Unsplash) baixadas para `public/images`. Créditos em
-`public/images/CREDITOS.md`; pendências em `docs/PENDENCIAS-CLIENTE.md`.
 
 ## Fase 3 — correções da revisão
 
@@ -216,10 +150,82 @@ colateral corrigido: numa grade `grid` com altura definida, itens com
 `aspect-ratio` colapsavam e cortavam nome/preço — o scroll foi movido para um
 wrapper (a grade mantém altura natural), igual ao padrão já usado na comanda.
 
-### D3.6 — "Cancelar" após envio é no nível da comanda
-O pedido falava em "cancelar item com PIN após envio". Antes do envio, mexer no
-item (+/−/remover) é livre (rascunho). Depois do envio a comanda está na cozinha;
-o que faz sentido operacional é **cancelar a comanda inteira** com PIN de
-gerente/dona + motivo, gerando `EventoAuditoria` (impacto negativo). Cancelar um
-item isolado de um pedido já na cozinha ficou fora de escopo — anotado em
-`docs/PENDENCIAS-CLIENTE.md` caso a cliente queira granularidade por item.
+### D3.6 — "Cancelar" após envio ~~é no nível da comanda~~ **SUBSTITUÍDA por D4.2**
+**SUBSTITUÍDA por D4.2** (cancelar item após envio entrou no escopo na Fase 4).
+Registro original: na Fase 3, só o cancelamento da **comanda inteira** (com PIN +
+motivo) foi implementado; o cancelamento de item isolado ficou como pendência —
+que o arquiteto trouxe para o escopo na Fase 4.
+
+## Fase 4 — KDS + cancelar item (decisões do arquiteto)
+
+### D4.1 — Item da comanda é referenciado por índice (sem id próprio)
+`ItemComanda` ganhou campos opcionais de cancelamento (`cancelado`,
+`canceladoPor`, `motivoCancelamento`, `canceladoEm`, `canceladoAposPreparo`),
+mas **não** ganhou `id`. As stores já operam por índice e o seed não gera ids;
+o cancelamento referencia `{comandaId, itemIndex}`. Campos opcionais = seed e
+persistência antigos continuam válidos. `MotivoPerda` ganhou
+`cancelado_apos_preparo`. `persist.version` subiu 2→3 (sem migração destrutiva).
+
+### D4.2 — Estorno × perda decidido pelo status ATUAL da comanda
+Ao cancelar um item: comanda ainda `enviada` (na fila) → **estorna** o estoque;
+`preparando`/`pronta` (já foi para a chapa) → vira **Perda** automática
+(`cancelado_apos_preparo`). A `cancelarItemComanda` relê o status do estado
+fresco (não de um snapshot) para não errar o ramo se o KDS avançar o status
+enquanto o PIN está aberto, e retorna `{ok, jaPreparado}` para o PdvClient só
+gerar EventoAuditoria + ticket quando o cancelamento realmente ocorre. Se o
+último item ativo for cancelado, a comanda inteira vira `cancelada`.
+
+### D4.3 — /cozinha fora do AppShell, com guard próprio
+A rota `/cozinha` já fica fora do grupo `(app)` (tela cheia, sem sidebar). O KDS
+replica o guard do AppShell (useHidratado → sessão → `podeAcessarRota`). Só o
+perfil **cozinha** acessa; cada cozinheiro vê a sua loja (Seu Antônio = Loja 1,
+Dona Lúcia = Loja 2). O destaque/som de "pedido novo" só dispara após a
+hidratação, para não acender todos os cartões ao carregar.
+
+### D4.4 — Sons sintetizados (sem asset) e o desbloqueio do autoplay
+Som de impressão (pendência 16) e sino de pedido novo do KDS são **sintetizados
+via Web Audio API** (sem mp3 em `public/`). O toggle "Som de impressão" (menu do
+usuário, OFF por padrão) governa o som de impressão do PDV. O sino do KDS é um
+recurso central da cozinha, mas o autoplay é bloqueado pelo navegador até um
+gesto do usuário; por isso o KDS mostra uma faixa discreta "Toque para ativar o
+som dos pedidos" que some após o primeiro toque e lembra a escolha na sessão da
+aba (`sessionStorage`).
+
+### D4.5 — QR do Pix com selo "Demonstração" (pendência 14)
+Selo diagonal discreto sobre o QR, em cinza (não vermelho — a direção de arte
+evita confundir a marca com erro).
+
+## Fase 5 — Painel da Dona
+
+### D5.1 — Comparação justa e janelas no fuso de Fortaleza
+As métricas vivem em `lib/domain/painel.ts` (puras, testadas). "Hoje" compara
+com o MESMO dia da semana passada até o mesmo horário decorrido; "7/30 dias"
+comparam com o período imediatamente anterior de mesmo tamanho. Tudo calculado
+no fuso América/Fortaleza. Faturamento = itens ativos − desconto (cancelados
+fora); descontos aparecem como linha própria.
+
+### D5.2 — Lucro estimado e rateio das despesas fixas
+`Lucro estimado = faturamento − CMV − perdas − despesas`, com as despesas fixas
+mensais rateadas por dia (mensal/30 × dias do período). O aluguel é marcado por
+loja no seed (P&L por loja correto); despesas sem loja dividem 50/50. Rotulado
+"estimado" + sheet "Como calculamos".
+
+### D5.3 — Volume do seed calibrado para um negócio saudável
+A base de comandas/dia subiu para 56 (Centro) / 46 (Cohama) para que o
+faturamento supere com folga as despesas fixas (R$ 21.700/mês) e o painel mostre
+um lucro plausível — antes o volume era baixo demais e o "lucro estimado" saía
+negativo. As compras do seed escalam com o consumo, então o estoque continua
+saudável. Determinismo preservado (contagem por índice/dia estável).
+
+### D5.4 — Ao vivo entre abas
+O painel recalcula tudo a partir do `useDadosStore` (sincronizado entre abas por
+`sync.ts`). Uma venda paga noutra aba aparece sem recarregar; um efeito observa o
+último pagamento e mostra o aviso "Nova venda · … · R$ …" (só para vendas novas
+da loja filtrada, nunca na carga inicial nem antes da abertura). O número-herói
+só anima quando há venda nova de fato (gatilho = id do último pagamento), nunca
+pelo tique do relógio.
+
+### D5.5 — Estados
+Antes das 6h30 (Fortaleza), "hoje" mostra um estado próprio ("A loja ainda não
+abriu. Ontem: R$ X") em vez de gráficos zerados. A hidratação é coberta pelo
+skeleton do AppShell.

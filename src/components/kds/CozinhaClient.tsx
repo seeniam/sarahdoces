@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LogOut, Timer, Trash2, UtensilsCrossed } from "lucide-react";
+import { LogOut, Timer, Trash2, UtensilsCrossed, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CerejaMark } from "@/components/brand/Logo";
 import { KdsColuna } from "./KdsColuna";
@@ -130,6 +130,21 @@ export function CozinhaClient() {
     return Math.round(soma / feitas.length);
   }, [comandas, lojaAtual]);
 
+  // Som dos pedidos: o autoplay é bloqueado até um gesto do usuário. Mostramos
+  // uma faixa "Toque para ativar" e lembramos a escolha na sessão da aba.
+  const [somAtivado, setSomAtivado] = useState(() => {
+    try {
+      return typeof window !== "undefined" && sessionStorage.getItem("cereja-kds-som") === "1";
+    } catch {
+      return false;
+    }
+  });
+  function ativarSom() {
+    setSomAtivado(true);
+    try { sessionStorage.setItem("cereja-kds-som", "1"); } catch {}
+    tocarSinoNovoPedido(); // dentro do gesto → libera o áudio e confirma
+  }
+
   // Pedido novo (de outra aba, via sync do persist): som suave + destaque único.
   const vistos = useRef<Set<string> | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -151,7 +166,7 @@ export function CozinhaClient() {
     const frescos = [...idsEnviada].filter((id) => !vistos.current!.has(id));
     vistos.current = idsEnviada;
     if (frescos.length === 0) return;
-    tocarSinoNovoPedido();
+    if (somAtivado) tocarSinoNovoPedido();
     setDestaques((prev) => new Set([...prev, ...frescos]));
     const t = setTimeout(() => {
       setDestaques((prev) => {
@@ -163,7 +178,7 @@ export function CozinhaClient() {
     }, 4500);
     timers.current.push(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chaveAbertas, hidratado]);
+  }, [chaveAbertas, hidratado, somAtivado]);
 
   const [perdaAberta, setPerdaAberta] = useState(false);
 
@@ -256,6 +271,18 @@ export function CozinhaClient() {
           </Button>
         </div>
       </header>
+
+      {/* Autoplay é bloqueado: faixa discreta para ativar o som dos pedidos. */}
+      {!somAtivado && (
+        <button
+          type="button"
+          onClick={ativarSom}
+          className="flex items-center justify-center gap-2 border-b border-white/10 bg-white/[0.04] py-2 text-sm text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white"
+        >
+          <Volume2 className="size-4" />
+          Toque para ativar o som dos pedidos
+        </button>
+      )}
 
       {/* Colunas */}
       <div className="flex min-h-0 flex-1 gap-4 p-4">
