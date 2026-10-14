@@ -32,7 +32,8 @@ test("cancelar item: atendente é barrado, gerente autoriza, item fica riscado",
   await enviarComanda(page);
 
   await page.getByRole("button", { name: /Comandas abertas/ }).click();
-  await page.getByRole("button", { name: /Cancelar item/ }).first().click();
+  // Botão discreto "Cancelar" por item (≠ "Cancelar comanda").
+  await page.getByRole("button", { name: "Cancelar", exact: true }).first().click();
 
   // Escolhe o motivo.
   await page.getByRole("button", { name: "Cliente desistiu" }).click();

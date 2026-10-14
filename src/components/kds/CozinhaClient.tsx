@@ -17,6 +17,7 @@ import { podeAcessarRota, rotaInicial } from "@/lib/auth/navegacao";
 import { registrarEvento } from "@/lib/domain";
 import { novoId, agoraISO } from "@/lib/id";
 import { tocarSinoNovoPedido } from "@/lib/som";
+import type { CategoriaIcone } from "@/components/brand/icons";
 import type { Comanda, Perda, StatusComanda } from "@/types";
 
 function Skeleton() {
@@ -35,8 +36,10 @@ export function CozinhaClient() {
   const lojas = useDadosStore((s) => s.lojas);
   const produtos = useDadosStore((s) => s.produtos);
   const insumos = useDadosStore((s) => s.insumos);
+  const categorias = useDadosStore((s) => s.categorias);
   const comandas = useDadosStore((s) => s.comandas);
   const avancarStatusComanda = useDadosStore((s) => s.avancarStatusComanda);
+  const marcarEntregueComanda = useDadosStore((s) => s.marcarEntregueComanda);
   const adicionarPerda = useDadosStore((s) => s.adicionarPerda);
   const adicionarEvento = useDadosStore((s) => s.adicionarEvento);
   const sair = useSessaoStore((s) => s.sair);
@@ -46,6 +49,14 @@ export function CozinhaClient() {
     [usuarios, usuarioId],
   );
   const lojaAtual = usuario?.lojaId ?? "loja-1";
+  const iconePorCategoria = useMemo(
+    () =>
+      Object.fromEntries(categorias.map((c) => [c.id, c.icone])) as Record<
+        string,
+        CategoriaIcone
+      >,
+    [categorias],
+  );
 
   // Guard próprio (a /cozinha fica fora do AppShell).
   useEffect(() => {
@@ -86,7 +97,17 @@ export function CozinhaClient() {
 
   const novos = abertas.filter((c) => c.status === "enviada");
   const preparando = abertas.filter((c) => c.status === "preparando");
-  const prontos = abertas.filter((c) => c.status === "pronta");
+  // Prontos: enquanto não entregue e por até 10 min (depois some sozinho).
+  const LIMITE_PRONTO_MS = 10 * 60 * 1000;
+  const prontos = abertas.filter(
+    (c) =>
+      c.status === "pronta" &&
+      !c.entregueEm &&
+      agora -
+        new Date(c.prontaEm ?? c.enviadaEm ?? c.criadaEm).getTime() <
+        LIMITE_PRONTO_MS,
+  );
+  const naFila = novos.length + preparando.length + prontos.length;
 
   // Tempo médio de preparo de hoje (comandas já prontas/pagas da loja).
   const tempoMedio = useMemo(() => {
@@ -157,6 +178,10 @@ export function CozinhaClient() {
     avancarStatusComanda(c.id, proximo);
   }
 
+  function entregar(c: Comanda) {
+    marcarEntregueComanda(c.id);
+  }
+
   function registrarPerda(perda: Perda, custo: number) {
     adicionarPerda(perda);
     const nomeAlvo =
@@ -196,7 +221,7 @@ export function CozinhaClient() {
           <div className="hidden items-center gap-4 sm:flex">
             <span className="inline-flex items-center gap-2 text-sm text-white/80">
               <UtensilsCrossed className="size-4 text-white/50" />
-              <span className="font-display text-lg tnum">{abertas.length}</span>
+              <span className="font-display text-lg tnum">{naFila}</span>
               na fila
             </span>
             <span className="inline-flex items-center gap-2 text-sm text-white/80">
@@ -239,6 +264,7 @@ export function CozinhaClient() {
           comandas={novos}
           agora={agora}
           onAvancar={avancar}
+          onEntregue={entregar}
           destaques={destaques}
         />
         <KdsColuna
@@ -246,6 +272,7 @@ export function CozinhaClient() {
           comandas={preparando}
           agora={agora}
           onAvancar={avancar}
+          onEntregue={entregar}
           destaques={destaques}
         />
         <KdsColuna
@@ -253,6 +280,7 @@ export function CozinhaClient() {
           comandas={prontos}
           agora={agora}
           onAvancar={avancar}
+          onEntregue={entregar}
           destaques={destaques}
         />
       </div>
@@ -264,6 +292,7 @@ export function CozinhaClient() {
         usuarioId={usuario.id}
         produtos={produtos.filter((p) => p.ativo)}
         insumos={insumos}
+        iconePorCategoria={iconePorCategoria}
         onRegistrar={registrarPerda}
       />
     </main>

@@ -41,6 +41,8 @@ export type DadosState = BancoMock & {
   enviarComanda: (comanda: Comanda) => void;
   /** Avança o status de uma comanda (KDS). */
   avancarStatusComanda: (comandaId: string, status: StatusComanda) => void;
+  /** Marca a comanda como entregue na cozinha (sai do KDS). */
+  marcarEntregueComanda: (comandaId: string) => void;
   /**
    * Cancela um item já enviado (por índice). Marca o item como cancelado e,
    * se ainda NÃO foi preparado (status "enviada"), estorna o estoque; se JÁ foi
@@ -135,6 +137,15 @@ export const useDadosStore = create<DadosState>()(
                       ? (c.prontaEm ?? new Date().toISOString())
                       : c.prontaEm,
                 }
+              : c,
+          ),
+        })),
+
+      marcarEntregueComanda: (comandaId) =>
+        set((s) => ({
+          comandas: s.comandas.map((c) =>
+            c.id === comandaId
+              ? { ...c, entregueEm: c.entregueEm ?? new Date().toISOString() }
               : c,
           ),
         })),

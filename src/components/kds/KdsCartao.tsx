@@ -1,10 +1,11 @@
 "use client";
 
-import { Clock, Flame, Check } from "lucide-react";
+import { Clock, Flame, Check, PackageCheck } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { PRODUTO_POR_ID } from "@/lib/mock/data";
+import { formatHaMinutos } from "@/lib/format";
 import type { Comanda, StatusComanda } from "@/types";
 
 const TIPO_LABEL: Record<Comanda["tipo"], string> = {
@@ -15,86 +16,83 @@ const TIPO_LABEL: Record<Comanda["tipo"], string> = {
 
 /** Cor do cronômetro por faixa (PRD: verde <8, amarelo <15, vermelho >15). */
 function faixaTempo(min: number) {
-  if (min < 8) return { cor: "#5E7F36", rotulo: "no tempo" }; // pistache
-  if (min < 15) return { cor: "#C98A2E", rotulo: "atenção" }; // doce-de-leite
-  return { cor: "#C8372D", rotulo: "atrasado" }; // alerta
+  if (min < 8) return "#5E7F36"; // pistache
+  if (min < 15) return "#C98A2E"; // doce-de-leite
+  return "#C8372D"; // alerta
 }
 
 export function KdsCartao({
   comanda,
   agora,
   onAvancar,
+  onEntregue,
   destaque = false,
 }: {
   comanda: Comanda;
   /** Instante atual em ms (relógio do board, atualizado periodicamente). */
   agora: number;
   onAvancar: (c: Comanda, proximo: StatusComanda) => void;
+  onEntregue: (c: Comanda) => void;
   destaque?: boolean;
 }) {
   const semMovimento = useReducedMotion();
+  const pronta = comanda.status === "pronta";
   const base = new Date(comanda.enviadaEm ?? comanda.criadaEm).getTime();
-  // Em "Prontos", o cronômetro congela no momento em que ficou pronto.
-  const fim =
-    comanda.status === "pronta" && comanda.prontaEm
-      ? new Date(comanda.prontaEm).getTime()
-      : agora;
-  const minutos = Math.max(0, Math.floor((fim - base) / 60000));
-  const faixa = faixaTempo(minutos);
+  // Em "Prontos", o tempo conta desde que ficou pronto ("pronto há 3 min").
+  const prontaBase = comanda.prontaEm ? new Date(comanda.prontaEm).getTime() : base;
+  const minutos = Math.max(0, Math.floor((agora - base) / 60000));
+  const minPronto = Math.max(0, Math.floor((agora - prontaBase) / 60000));
   const corLoja = comanda.lojaId === "loja-1" ? "bg-loja-1" : "bg-loja-2";
-  const alvo = `${TIPO_LABEL[comanda.tipo]}${
-    comanda.identificador ? ` ${comanda.identificador}` : ""
-  }`;
 
-  const proximo: StatusComanda | null =
-    comanda.status === "enviada"
-      ? "preparando"
-      : comanda.status === "preparando"
-        ? "pronta"
-        : null;
-  const rotuloBotao =
-    comanda.status === "enviada"
-      ? "Começar preparo"
-      : comanda.status === "preparando"
-        ? "Marcar pronto"
-        : null;
-  const IconeBotao = comanda.status === "enviada" ? Flame : Check;
+  const alvo =
+    comanda.tipo === "mesa"
+      ? `Mesa ${comanda.identificador}`.trim()
+      : `${TIPO_LABEL[comanda.tipo]}${comanda.identificador ? ` · ${comanda.identificador}` : ""}`;
+
+  const corTempo = faixaTempo(minutos);
 
   return (
     <motion.article
       layout={!semMovimento}
       initial={semMovimento ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={semMovimento ? undefined : { opacity: 0, scale: 0.97 }}
+      exit={semMovimento ? undefined : { opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.25 }}
       className={cn(
         "overflow-hidden rounded-[16px] bg-white text-[#2b1b18] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)]",
         destaque && "ring-4 ring-doce-de-leite",
       )}
     >
+      {/* Única cor da loja: a faixa do topo. */}
       <div className={cn("h-2 w-full", corLoja)} />
 
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-display text-4xl leading-none tnum">
-              #{String(comanda.numero).padStart(4, "0")}
-            </p>
-            <p className="mt-1 text-sm font-semibold uppercase tracking-wide text-[#2b1b18]/70">
-              {alvo}
-            </p>
+            {/* Destino do prato em Gloock grande; nº da comanda menor ao lado. */}
+            <div className="flex items-baseline gap-2">
+              <h3 className="font-display text-3xl leading-none">{alvo}</h3>
+              <span className="shrink-0 text-sm text-[#2b1b18]/45 tnum">
+                #{String(comanda.numero).padStart(4, "0")}
+              </span>
+            </div>
           </div>
-          <span
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold tnum"
-            style={{ color: faixa.cor, backgroundColor: `${faixa.cor}1a` }}
-          >
+
+          {pronta ? (
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-pistache/12 px-2.5 py-1 text-sm font-semibold text-pistache">
+              <PackageCheck className="size-3.5" />
+              pronto {formatHaMinutos(minPronto)}
+            </span>
+          ) : (
             <span
-              className="size-2 rounded-full"
-              style={{ backgroundColor: faixa.cor }}
-            />
-            <Clock className="size-3.5" />
-            {minutos}m
-          </span>
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold tnum"
+              style={{ color: corTempo, backgroundColor: `${corTempo}1a` }}
+            >
+              <span className="size-2 rounded-full" style={{ backgroundColor: corTempo }} />
+              <Clock className="size-3.5" />
+              {minutos}m
+            </span>
+          )}
         </div>
 
         <ul className="mt-3 space-y-2 border-t border-[#2b1b18]/10 pt-3">
@@ -103,8 +101,10 @@ export function KdsCartao({
             return (
               <li key={i}>
                 <div className="flex items-baseline gap-2">
-                  <span className="font-display text-2xl leading-none tnum">
-                    {it.qtd}×
+                  {/* "1×": quantidade e "×" com o mesmo peso e cor (igual ao ticket). */}
+                  <span className="flex items-baseline gap-0.5 leading-none">
+                    <span className="font-display text-2xl tnum">{it.qtd}</span>
+                    <span className="text-xl font-semibold">×</span>
                   </span>
                   <span
                     className={cn(
@@ -136,20 +136,35 @@ export function KdsCartao({
           })}
         </ul>
 
-        {proximo && rotuloBotao ? (
+        {/* Botão pela cor do PRÓXIMO estado. */}
+        {comanda.status === "enviada" ? (
           <Button
             size="lg"
-            className="mt-4 h-14 w-full text-base"
-            onClick={() => onAvancar(comanda, proximo)}
+            className="mt-4 h-14 w-full bg-doce-de-leite text-base text-white hover:bg-doce-de-leite/90"
+            onClick={() => onAvancar(comanda, "preparando")}
           >
-            <IconeBotao className="size-5" />
-            {rotuloBotao}
+            <Flame className="size-5" />
+            Começar preparo
+          </Button>
+        ) : comanda.status === "preparando" ? (
+          <Button
+            size="lg"
+            className="mt-4 h-14 w-full bg-pistache text-base text-white hover:bg-pistache/90"
+            onClick={() => onAvancar(comanda, "pronta")}
+          >
+            <Check className="size-5" />
+            Marcar pronto
           </Button>
         ) : (
-          <p className="mt-4 flex h-14 items-center justify-center rounded-[12px] bg-pistache/15 text-base font-semibold text-pistache">
-            <Check className="mr-2 size-5" />
-            Pronto para retirada
-          </p>
+          <Button
+            size="lg"
+            variant="outline"
+            className="mt-4 h-14 w-full border-[#2b1b18]/15 bg-white text-base text-[#2b1b18] hover:bg-[#2b1b18]/5"
+            onClick={() => onEntregue(comanda)}
+          >
+            <PackageCheck className="size-5" />
+            Entregue
+          </Button>
         )}
       </div>
     </motion.article>

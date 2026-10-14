@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Camera, Check } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Camera, Check, Minus, Plus, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,13 +11,21 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FotoProduto } from "@/components/shared/FotoProduto";
 import { cn } from "cn";
 import { ROTULO_MOTIVO_PERDA } from "@/lib/domain";
 import { novoId, agoraISO } from "@/lib/id";
 import { formatBRL } from "@/lib/format";
-import type { Insumo, LojaId, MotivoPerda, Perda, Produto, UsuarioId } from "@/types";
+import type { CategoriaIcone } from "@/components/brand/icons";
+import type {
+  Insumo,
+  LojaId,
+  MotivoPerda,
+  Perda,
+  Produto,
+  UsuarioId,
+} from "@/types";
 
-// Motivos de registro manual (o automático "cancelado_apos_preparo" fica de fora).
 const MOTIVOS: MotivoPerda[] = [
   "queimou",
   "caiu",
@@ -30,6 +38,11 @@ const MOTIVOS: MotivoPerda[] = [
 ];
 
 type Alvo = "produto" | "insumo";
+const UNIDADE_DECIMAL = new Set(["kg", "L"]);
+
+function normalizar(s: string) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
 
 export function RegistrarPerdaModal({
   aberto,
@@ -38,6 +51,7 @@ export function RegistrarPerdaModal({
   usuarioId,
   produtos,
   insumos,
+  iconePorCategoria,
   onRegistrar,
 }: {
   aberto: boolean;
@@ -46,6 +60,7 @@ export function RegistrarPerdaModal({
   usuarioId: UsuarioId;
   produtos: Produto[];
   insumos: Insumo[];
+  iconePorCategoria: Record<string, CategoriaIcone>;
   onRegistrar: (perda: Perda, custo: number) => void;
 }) {
   const [alvo, setAlvo] = useState<Alvo>("produto");
@@ -54,13 +69,27 @@ export function RegistrarPerdaModal({
   const [qtd, setQtd] = useState(1);
   const [motivo, setMotivo] = useState<MotivoPerda | null>(null);
   const [comFoto, setComFoto] = useState(false);
+  const [busca, setBusca] = useState("");
 
   const produto = produtos.find((p) => p.id === produtoId);
   const insumo = insumos.find((i) => i.id === insumoId);
+  const decimal = alvo === "insumo" && !!insumo && UNIDADE_DECIMAL.has(insumo.unidade);
+  const passo = decimal ? 0.1 : 1;
+
   const custoUnit = alvo === "produto" ? (produto?.custo ?? 0) : (insumo?.custoMedio ?? 0);
   const custo = Number((custoUnit * qtd).toFixed(2));
   const temAlvo = alvo === "produto" ? !!produto : !!insumo;
   const pode = temAlvo && qtd > 0 && !!motivo;
+
+  const q = normalizar(busca.trim());
+  const produtosFiltrados = useMemo(
+    () => (q ? produtos.filter((p) => normalizar(p.nome).includes(q)) : produtos),
+    [produtos, q],
+  );
+  const insumosFiltrados = useMemo(
+    () => (q ? insumos.filter((i) => normalizar(i.nome).includes(q)) : insumos),
+    [insumos, q],
+  );
 
   function limpar() {
     setAlvo("produto");
@@ -69,6 +98,20 @@ export function RegistrarPerdaModal({
     setQtd(1);
     setMotivo(null);
     setComFoto(false);
+    setBusca("");
+  }
+
+  function trocarAlvo(a: Alvo) {
+    setAlvo(a);
+    setBusca("");
+    setQtd(a === "insumo" ? 1 : 1);
+  }
+
+  function ajustarQtd(delta: number) {
+    setQtd((v) => {
+      const n = Math.max(0, Number((v + delta).toFixed(2)));
+      return n;
+    });
   }
 
   function confirmar() {
@@ -90,9 +133,6 @@ export function RegistrarPerdaModal({
     onOpenChange(false);
   }
 
-  const selectCls =
-    "h-14 w-full rounded-[12px] border border-border bg-card px-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
-
   return (
     <Dialog
       open={aberto}
@@ -101,7 +141,7 @@ export function RegistrarPerdaModal({
         onOpenChange(o);
       }}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Registrar perda</DialogTitle>
           <DialogDescription>
@@ -115,9 +155,9 @@ export function RegistrarPerdaModal({
             <button
               key={a}
               type="button"
-              onClick={() => setAlvo(a)}
+              onClick={() => trocarAlvo(a)}
               className={cn(
-                "h-14 rounded-[12px] border text-sm font-medium capitalize transition-colors",
+                "h-12 rounded-[12px] border text-sm font-medium capitalize transition-colors",
                 alvo === a
                   ? "border-cereja bg-acucar/60 text-cereja"
                   : "border-border bg-card text-muted-foreground hover:bg-muted",
@@ -128,47 +168,112 @@ export function RegistrarPerdaModal({
           ))}
         </div>
 
-        {alvo === "produto" ? (
-          <select
-            className={selectCls}
-            value={produtoId}
-            onChange={(e) => setProdutoId(e.target.value)}
-          >
-            <option value="">Escolha o produto…</option>
-            {produtos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <select
-            className={selectCls}
-            value={insumoId}
-            onChange={(e) => setInsumoId(e.target.value)}
-          >
-            <option value="">Escolha o insumo…</option>
-            {insumos.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.nome} ({i.unidade})
-              </option>
-            ))}
-          </select>
-        )}
-
-        {/* Quantidade */}
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-foreground">Quantidade</label>
+        {/* Busca */}
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            type="number"
-            min={0}
-            step="any"
-            value={qtd}
-            onChange={(e) => setQtd(Math.max(0, Number(e.target.value) || 0))}
-            className="h-14 w-28 text-lg tnum"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder={alvo === "produto" ? "Buscar produto…" : "Buscar insumo…"}
+            className="h-11 pl-9"
           />
-          <span className="ml-auto text-sm text-muted-foreground">
-            Custo: <span className="font-semibold text-foreground tnum">{formatBRL(custo)}</span>
+        </div>
+
+        {/* Seleção (scroll) */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {alvo === "produto" ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {produtosFiltrados.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setProdutoId(p.id)}
+                  className={cn(
+                    "flex items-center gap-2 overflow-hidden rounded-[12px] border p-2 text-left transition-colors",
+                    produtoId === p.id
+                      ? "border-cereja bg-acucar/50"
+                      : "border-border bg-card hover:bg-muted",
+                  )}
+                >
+                  <div className="size-10 shrink-0">
+                    <FotoProduto
+                      src={p.foto}
+                      alt={p.nome}
+                      aspecto="1:1"
+                      categoria={iconePorCategoria[p.categoriaId]}
+                      sizes="40px"
+                    />
+                  </div>
+                  <span className="min-w-0 flex-1 text-sm font-medium leading-tight">
+                    {p.nome}
+                  </span>
+                </button>
+              ))}
+              {produtosFiltrados.length === 0 && (
+                <p className="col-span-full py-8 text-center text-sm text-muted-foreground">
+                  Nenhum produto.
+                </p>
+              )}
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {insumosFiltrados.map((i) => (
+                <li key={i.id}>
+                  <button
+                    type="button"
+                    onClick={() => setInsumoId(i.id)}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-2 px-2 py-2.5 text-left text-sm transition-colors",
+                      insumoId === i.id
+                        ? "bg-acucar/50 font-medium text-cereja"
+                        : "hover:bg-muted",
+                    )}
+                  >
+                    <span className="min-w-0 truncate">{i.nome}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {i.unidade}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {insumosFiltrados.length === 0 && (
+                <li className="py-8 text-center text-sm text-muted-foreground">
+                  Nenhum insumo.
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+
+        {/* Quantidade (stepper) + custo */}
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Diminuir"
+              onClick={() => ajustarQtd(-passo)}
+              className="grid size-14 place-items-center rounded-[12px] border border-border bg-card hover:bg-muted"
+            >
+              <Minus className="size-5" />
+            </button>
+            <span className="w-16 text-center font-display text-2xl tnum">
+              {decimal ? qtd.toFixed(1).replace(".", ",") : qtd}
+            </span>
+            <button
+              type="button"
+              aria-label="Aumentar"
+              onClick={() => ajustarQtd(passo)}
+              className="grid size-14 place-items-center rounded-[12px] border border-border bg-card hover:bg-muted"
+            >
+              <Plus className="size-5" />
+            </button>
+            {alvo === "insumo" && insumo && (
+              <span className="text-sm text-muted-foreground">{insumo.unidade}</span>
+            )}
+          </div>
+          <span className="text-sm text-muted-foreground">
+            Custo:{" "}
+            <span className="font-semibold text-foreground tnum">{formatBRL(custo)}</span>
           </span>
         </div>
 
@@ -191,23 +296,29 @@ export function RegistrarPerdaModal({
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setComFoto((v) => !v)}
-          className={cn(
-            "flex h-14 items-center justify-center gap-2 rounded-[12px] border text-sm font-medium transition-colors",
-            comFoto
-              ? "border-pistache bg-pistache/10 text-pistache"
-              : "border-dashed border-border text-muted-foreground hover:bg-muted",
-          )}
-        >
-          {comFoto ? <Check className="size-4" /> : <Camera className="size-4" />}
-          {comFoto ? "Foto anexada (demonstração)" : "Anexar foto (opcional)"}
-        </button>
-
-        <Button size="lg" className="h-14" disabled={!pode} onClick={confirmar}>
-          Registrar perda
-        </Button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setComFoto((v) => !v)}
+            className={cn(
+              "flex h-14 flex-1 items-center justify-center gap-2 rounded-[12px] border text-sm font-medium transition-colors",
+              comFoto
+                ? "border-pistache bg-pistache/10 text-pistache"
+                : "border-dashed border-border text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {comFoto ? <Check className="size-4" /> : <Camera className="size-4" />}
+            {comFoto ? "Foto anexada" : "Anexar foto"}
+          </button>
+          <Button
+            size="lg"
+            className="h-14 flex-1"
+            disabled={!pode}
+            onClick={confirmar}
+          >
+            Registrar perda
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -225,6 +225,8 @@ export interface Comanda {
   criadaEm: ISODate;
   enviadaEm?: ISODate;
   prontaEm?: ISODate;
+  /** Entregue na cozinha (sai do KDS; a comanda segue para pagamento no PDV). */
+  entregueEm?: ISODate;
   pagaEm?: ISODate;
   /** Desconto aplicado (R$), se houver (autorizado por gerente). */
   desconto?: number;

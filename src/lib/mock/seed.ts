@@ -229,8 +229,9 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
           ["mesa", "balcao", "viagem"],
           [5, 4, 2],
         );
+        // Mesa guarda só o número (como o PDV); o rótulo "Mesa" é da UI.
         const identificador =
-          tipo === "mesa" ? `Mesa ${rng.int(1, 12)}` : rng.pick(NOMES_CLIENTE);
+          tipo === "mesa" ? String(rng.int(1, 12)) : rng.pick(NOMES_CLIENTE);
 
         const subtotal = itens.reduce((s, it) => s + it.precoUnit * it.qtd, 0);
 
@@ -250,11 +251,10 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
         const prontaEm = dataNoDia(offset, hora, Math.min(59, minuto + 8));
         const pagaEm = dataNoDia(offset, hora, Math.min(59, minuto + 12));
 
-        // Comandas de hoje próximas do "agora" ainda estão em andamento (KDS).
+        // Pedidos em andamento (KDS) são semeados à parte, logo após este laço,
+        // com idades controladas (2–18 min). Aqui, tudo é pago ou cancelado.
         let status: StatusComanda = "paga";
         if (cancelada) status = "cancelada";
-        else if (hoje && hora * 60 + minuto >= minutosAgora - 90)
-          status = rng.pick(["enviada", "preparando", "pronta"]);
 
         const id = `cmd-${(++seqComanda).toString().padStart(5, "0")}`;
         const comanda: Comanda = {
@@ -268,8 +268,7 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
           status,
           criadaEm,
           enviadaEm,
-          prontaEm:
-            status === "pronta" || status === "paga" ? prontaEm : undefined,
+          prontaEm: status === "paga" ? prontaEm : undefined,
           pagaEm: status === "paga" ? pagaEm : undefined,
           desconto: cancelada ? undefined : desconto,
           motivoCancelamento: cancelada ? "cliente desistiu" : undefined,
@@ -328,6 +327,63 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
           });
         }
       }
+    }
+  }
+
+  // ---- Pedidos "em andamento" de agora, para o KDS sempre ter conteúdo com
+  // idades variadas (2–18 min) mostrando as 3 cores do cronômetro; nada acima
+  // de ~20 min. Ancorado em `agora` (independe do horário de funcionamento). ----
+  const haMin = (m: number) =>
+    new Date(agora.getTime() - m * 60000).toISOString();
+  const PLANO_KDS: { idade: number; status: StatusComanda; prontoHa?: number }[] = [
+    { idade: 3, status: "enviada" }, // verde (Novos)
+    { idade: 6, status: "enviada" }, // verde (Novos)
+    { idade: 9, status: "preparando" }, // amarelo (Preparando)
+    { idade: 13, status: "preparando" }, // amarelo (Preparando)
+    { idade: 17, status: "preparando" }, // vermelho (Preparando)
+    { idade: 12, status: "pronta", prontoHa: 2 }, // Prontos
+    { idade: 16, status: "pronta", prontoHa: 6 }, // Prontos
+  ];
+  for (const loja of LOJAS) {
+    const atendentes = ATENDENTES_LOJA[loja.id];
+    const pool = poolDoHorario(rel.hora);
+    const ids = pool.map((p) => p[0]);
+    const pesos = pool.map((p) => p[1]);
+    for (const plano of PLANO_KDS) {
+      const nItens = rng.pickPonderado([1, 2], [3, 2]);
+      const itens: ItemComanda[] = [];
+      for (let k = 0; k < nItens; k++) {
+        const produtoId = rng.pickPonderado(ids, pesos);
+        const produto = PRODUTO_POR_ID.get(produtoId) as Produto;
+        itens.push({
+          produtoId,
+          qtd: rng.pickPonderado([1, 2], [8, 2]),
+          precoUnit: produto.preco,
+          precoOriginal: produto.preco,
+          adicionais: [],
+        });
+      }
+      const tipo: TipoComanda = rng.pickPonderado(
+        ["mesa", "balcao", "viagem"],
+        [6, 2, 2],
+      );
+      const identificador =
+        tipo === "mesa" ? String(rng.int(1, 20)) : rng.pick(NOMES_CLIENTE);
+      const id = `cmd-${(++seqComanda).toString().padStart(5, "0")}`;
+      comandas.push({
+        id,
+        numero: ++numeroLoja[loja.id],
+        lojaId: loja.id,
+        atendenteId: rng.pick(atendentes),
+        tipo,
+        identificador,
+        itens,
+        status: plano.status,
+        criadaEm: haMin(plano.idade + 1),
+        enviadaEm: haMin(plano.idade),
+        prontaEm:
+          plano.status === "pronta" ? haMin(plano.prontoHa ?? 1) : undefined,
+      });
     }
   }
 

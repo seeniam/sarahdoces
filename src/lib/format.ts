@@ -50,6 +50,17 @@ export function formatPorcentagem(fracao: number, casas = 1): string {
   }).format(fracao);
 }
 
+/** Concordância de número: "1 item" / "2 itens". Inclui o número. */
+export function pluralizar(n: number, singular: string, plural: string): string {
+  return `${formatNumero(n)} ${n === 1 ? singular : plural}`;
+}
+
+/** "há 3 min" / "agora" a partir de minutos inteiros. */
+export function formatHaMinutos(min: number): string {
+  if (min <= 0) return "agora";
+  return `há ${min} min`;
+}
+
 /** Quantidade com unidade: "2,4 kg", "13 un" */
 export function formatQuantidade(valor: number, unidade: string): string {
   const casas = Number.isInteger(valor) ? 0 : valor < 10 ? 1 : 0;

@@ -34,5 +34,8 @@ test("Fase 4: KDS recebe o pedido de outra aba e avança o status", async ({
   await cartao.getByRole("button", { name: /Começar preparo/ }).click();
   await expect(cartao.getByRole("button", { name: /Marcar pronto/ })).toBeVisible();
   await cartao.getByRole("button", { name: /Marcar pronto/ }).click();
-  await expect(cartao.getByText(/Pronto para retirada/)).toBeVisible();
+  // Em "Prontos": botão "Entregue" (que remove o cartão do KDS).
+  await expect(cartao.getByRole("button", { name: /Entregue/ })).toBeVisible();
+  await cartao.getByRole("button", { name: /Entregue/ }).click();
+  await expect(cartao).toHaveCount(0);
 });

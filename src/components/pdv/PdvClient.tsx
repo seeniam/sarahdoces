@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Receipt, ShoppingBag } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Receipt, ShoppingBag, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
 import {
@@ -28,7 +28,7 @@ import {
 import { registrarEvento } from "@/lib/domain";
 import { PRODUTO_POR_ID } from "@/lib/mock/data";
 import { novoId, agoraISO } from "@/lib/id";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, pluralizar } from "@/lib/format";
 import type {
   Comanda,
   IconeCategoria,
@@ -358,7 +358,9 @@ export function PdvClient() {
           >
             <span className="inline-flex min-w-0 items-center gap-2">
               <ShoppingBag className="size-4 shrink-0" />
-              <span className="truncate">Comanda · {cart.itens.length} itens</span>
+              <span className="truncate">
+                Comanda · {pluralizar(cart.itens.length, "item", "itens")}
+              </span>
             </span>
             <span className="shrink-0 tnum">{formatBRL(totalCart)}</span>
           </SheetTrigger>
@@ -533,6 +535,12 @@ export function PdvClient() {
   );
 }
 
+const CHIP_COZINHA: Record<string, { label: string; cls: string; dot: string }> = {
+  enviada: { label: "Na fila", cls: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
+  preparando: { label: "Preparando", cls: "bg-doce-de-leite/15 text-doce-de-leite", dot: "bg-doce-de-leite" },
+  pronta: { label: "Pronto", cls: "bg-pistache/15 text-pistache", dot: "bg-pistache" },
+};
+
 function ComandasAbertasSheet({
   abertas,
   onPagar,
@@ -552,6 +560,38 @@ function ComandasAbertasSheet({
   const usuarios = useDadosStore((s) => s.usuarios);
   const nomeUsuario = (id?: string) =>
     usuarios.find((u) => u.id === id)?.nome ?? "—";
+
+  // Destaque único quando uma comanda muda para "Pronto" (vindo do KDS).
+  const prontasVistas = useRef<Set<string> | null>(null);
+  const [destaquePronto, setDestaquePronto] = useState<Set<string>>(() => new Set());
+  const chavePronto = abertas
+    .filter((c) => c.status === "pronta")
+    .map((c) => c.id)
+    .join(",");
+  useEffect(() => {
+    const prontas = new Set(
+      abertas.filter((c) => c.status === "pronta").map((c) => c.id),
+    );
+    if (prontasVistas.current === null) {
+      prontasVistas.current = prontas;
+      return;
+    }
+    const novas = [...prontas].filter((id) => !prontasVistas.current!.has(id));
+    prontasVistas.current = prontas;
+    if (novas.length === 0) return;
+    setDestaquePronto((prev) => new Set([...prev, ...novas]));
+    const t = setTimeout(
+      () =>
+        setDestaquePronto((prev) => {
+          const n = new Set(prev);
+          novas.forEach((id) => n.delete(id));
+          return n;
+        }),
+      5000,
+    );
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chavePronto]);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
@@ -580,82 +620,87 @@ function ComandasAbertasSheet({
           <SheetTitle className="font-display text-xl">Comandas abertas</SheetTitle>
         </SheetHeader>
         <div className="space-y-2 overflow-y-auto px-4 pb-8">
-          {abertas.map((c) => (
-            <div key={c.id} className="rounded-[14px] border border-border bg-card p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-display text-lg leading-none">
-                    #{String(c.numero).padStart(4, "0")}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {c.tipo === "mesa" ? "Mesa" : c.tipo === "balcao" ? "Balcão" : "Viagem"}
-                    {c.identificador ? ` ${c.identificador}` : ""} · {c.itens.length} itens
-                  </p>
-                </div>
-                <span className="shrink-0 font-semibold tnum">
-                  {formatBRL(totalComanda(c))}
-                </span>
-              </div>
-
-              {/* Itens da comanda — cancelar item a item (com PIN) */}
-              <ul className="mt-2 divide-y divide-border border-t border-border">
-                {c.itens.map((it, idx) => {
-                  const prod = PRODUTO_POR_ID.get(it.produtoId);
-                  return (
-                    <li
-                      key={idx}
-                      className="flex items-center justify-between gap-2 py-1.5"
-                    >
-                      <div className="min-w-0">
-                        <p
-                          className={cn(
-                            "truncate text-sm",
-                            it.cancelado &&
-                              "text-muted-foreground line-through",
-                          )}
-                        >
-                          {it.qtd}× {prod?.nome ?? it.produtoId}
-                        </p>
-                        {it.cancelado && (
-                          <p className="truncate text-[11px] text-alerta">
-                            Cancelado · {nomeUsuario(it.canceladoPor)} ·{" "}
-                            {it.motivoCancelamento}
-                          </p>
-                        )}
-                      </div>
-                      {!it.cancelado && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="shrink-0 text-muted-foreground hover:text-alerta"
-                          onClick={() => {
-                            setOpen(false);
-                            onCancelarItem(c, idx);
-                          }}
-                        >
-                          Cancelar item
-                        </Button>
+          {abertas.map((c) => {
+            const chip = CHIP_COZINHA[c.status] ?? CHIP_COZINHA.enviada;
+            const ativos = c.itens.filter((it) => !it.cancelado).length;
+            const tipoLabel =
+              c.tipo === "mesa" ? "Mesa" : c.tipo === "balcao" ? "Balcão" : "Viagem";
+            return (
+              <div key={c.id} className="rounded-[14px] border border-border bg-card p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-display text-lg leading-none">
+                      #{String(c.numero).padStart(4, "0")}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {tipoLabel}
+                      {c.identificador ? ` ${c.identificador}` : ""} ·{" "}
+                      {pluralizar(ativos, "item", "itens")}
+                    </p>
+                    {/* Status da cozinha: a atendente não precisa ir perguntar. */}
+                    <span
+                      className={cn(
+                        "mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                        chip.cls,
+                        destaquePronto.has(c.id) && "ring-2 ring-pistache/60",
                       )}
-                    </li>
-                  );
-                })}
-              </ul>
+                    >
+                      <span className={cn("size-1.5 rounded-full", chip.dot)} />
+                      {chip.label}
+                    </span>
+                  </div>
+                  <span className="shrink-0 font-semibold tnum">
+                    {formatBRL(totalComanda(c))}
+                  </span>
+                </div>
 
-              <div className="mt-2 flex gap-2">
+                {/* Itens da comanda — cancelar item a item (com PIN, discreto) */}
+                <ul className="mt-2 divide-y divide-border border-t border-border">
+                  {c.itens.map((it, idx) => {
+                    const prod = PRODUTO_POR_ID.get(it.produtoId);
+                    return (
+                      <li
+                        key={idx}
+                        className="flex items-center justify-between gap-2 py-1.5"
+                      >
+                        <div className="min-w-0">
+                          <p
+                            className={cn(
+                              "truncate text-sm",
+                              it.cancelado && "text-muted-foreground line-through",
+                            )}
+                          >
+                            {it.qtd}× {prod?.nome ?? it.produtoId}
+                          </p>
+                          {it.cancelado && (
+                            <p className="truncate text-[11px] text-alerta">
+                              Cancelado · {nomeUsuario(it.canceladoPor)} ·{" "}
+                              {it.motivoCancelamento}
+                            </p>
+                          )}
+                        </div>
+                        {!it.cancelado && (
+                          <button
+                            type="button"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:text-alerta"
+                            onClick={() => {
+                              setOpen(false);
+                              onCancelarItem(c, idx);
+                            }}
+                          >
+                            <X className="size-3.5" />
+                            Cancelar
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {/* Receber é a ação primária; cancelar a comanda é secundário. */}
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => {
-                    setOpen(false);
-                    onCancelar(c);
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  size="sm"
-                  className="flex-1"
+                  size="lg"
+                  className="mt-3 h-12 w-full"
                   onClick={() => {
                     setOpen(false);
                     onPagar(c);
@@ -663,9 +708,19 @@ function ComandasAbertasSheet({
                 >
                   Receber
                 </Button>
+                <button
+                  type="button"
+                  className="mt-2 block w-full py-1 text-center text-xs font-medium text-alerta/80 transition-colors hover:text-alerta"
+                  onClick={() => {
+                    setOpen(false);
+                    onCancelar(c);
+                  }}
+                >
+                  Cancelar comanda
+                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </SheetContent>
     </Sheet>

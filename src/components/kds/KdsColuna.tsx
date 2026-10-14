@@ -9,12 +9,14 @@ export function KdsColuna({
   comandas,
   agora,
   onAvancar,
+  onEntregue,
   destaques,
 }: {
   titulo: string;
   comandas: Comanda[];
   agora: number;
   onAvancar: (c: Comanda, proximo: StatusComanda) => void;
+  onEntregue: (c: Comanda) => void;
   destaques: Set<string>;
 }) {
   return (
@@ -34,6 +36,7 @@ export function KdsColuna({
               comanda={c}
               agora={agora}
               onAvancar={onAvancar}
+              onEntregue={onEntregue}
               destaque={destaques.has(c.id)}
             />
           ))}
