@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "cn";
 import { formatBRL, formatPorcentagem } from "@/lib/format";
 import type { FatiaPagamento } from "@/lib/domain";
 import type { FormaPagamento } from "@/types";
@@ -11,18 +10,14 @@ const ROTULO: Record<FormaPagamento, string> = {
   debito: "Débito",
   credito: "Crédito",
 };
-// Tons distintos dentro da marca (cereja → azulejo → folha → caramelo).
+// Paleta CATEGÓRICA (não é a da marca nem a de status): formas de pagamento são
+// categorias, não bom/ruim. Dinheiro NÃO é o verde de "positivo". Tons médios,
+// legíveis no claro e no escuro.
 const COR: Record<FormaPagamento, string> = {
-  pix: "bg-cereja",
-  dinheiro: "bg-pistache",
-  debito: "bg-azulejo",
-  credito: "bg-doce-de-leite",
-};
-const PONTO: Record<FormaPagamento, string> = {
-  pix: "bg-cereja",
-  dinheiro: "bg-pistache",
-  debito: "bg-azulejo",
-  credito: "bg-doce-de-leite",
+  pix: "#0FA3A3", // teal
+  dinheiro: "#6B82A0", // azul-ardósia (neutro)
+  debito: "#7C5CBF", // roxo
+  credito: "#D1477A", // rosa-magenta
 };
 
 export function FormasPagamentoBar({ dados }: { dados: FatiaPagamento[] }) {
@@ -36,8 +31,8 @@ export function FormasPagamentoBar({ dados }: { dados: FatiaPagamento[] }) {
         {comValor.map((d) => (
           <div
             key={d.forma}
-            className={cn("h-full", COR[d.forma])}
-            style={{ width: `${d.fracao * 100}%` }}
+            className="h-full"
+            style={{ width: `${d.fracao * 100}%`, backgroundColor: COR[d.forma] }}
             title={`${ROTULO[d.forma]}: ${formatBRL(d.valor)}`}
           />
         ))}
@@ -45,7 +40,7 @@ export function FormasPagamentoBar({ dados }: { dados: FatiaPagamento[] }) {
       <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
         {comValor.map((d) => (
           <li key={d.forma} className="flex items-center gap-2">
-            <span className={cn("size-2 shrink-0 rounded-full", PONTO[d.forma])} />
+            <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: COR[d.forma] }} />
             <span className="text-muted-foreground">{ROTULO[d.forma]}</span>
             <span className="ml-auto font-semibold text-foreground tnum">
               {formatPorcentagem(d.fracao, 0)}

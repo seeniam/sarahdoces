@@ -20,7 +20,7 @@ export function KdsColuna({
   destaques: Set<string>;
 }) {
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <section className="flex min-h-0 w-[82vw] max-w-sm shrink-0 flex-col sm:w-auto sm:max-w-none sm:min-w-[14rem] sm:flex-1">
       <header className="mb-3 flex items-center justify-between px-1">
         <h2 className="font-display text-xl text-white">{titulo}</h2>
         <span className="grid min-w-7 place-items-center rounded-full bg-white/10 px-2 py-0.5 text-sm font-semibold text-white tnum">

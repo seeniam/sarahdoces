@@ -67,32 +67,30 @@ export function KdsCartao({
       <div className={cn("h-2 w-full", corLoja)} />
 
       <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            {/* Destino do prato em Gloock grande; nº da comanda menor ao lado. */}
-            <div className="flex items-baseline gap-2">
-              <h3 className="font-display text-3xl leading-none">{alvo}</h3>
-              <span className="shrink-0 text-sm text-[#2b1b18]/45 tnum">
-                #{String(comanda.numero).padStart(4, "0")}
+        {/* Cabeçalho empilhado: o destino (Gloock grande) em cima; o nº e o
+            cronômetro na linha de baixo. Nunca sobrepõe, em qualquer largura. */}
+        <div className="min-w-0">
+          <h3 className="font-display text-3xl leading-none break-words">{alvo}</h3>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="shrink-0 text-sm text-[#2b1b18]/45 tnum">
+              #{String(comanda.numero).padStart(4, "0")}
+            </span>
+            {pronta ? (
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-pistache/12 px-2.5 py-1 text-sm font-semibold text-pistache">
+                <PackageCheck className="size-3.5" />
+                pronto {formatHaMinutos(minPronto)}
               </span>
-            </div>
+            ) : (
+              <span
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold tnum"
+                style={{ color: corTempo, backgroundColor: `${corTempo}1a` }}
+              >
+                <span className="size-2 rounded-full" style={{ backgroundColor: corTempo }} />
+                <Clock className="size-3.5" />
+                {minutos}m
+              </span>
+            )}
           </div>
-
-          {pronta ? (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-pistache/12 px-2.5 py-1 text-sm font-semibold text-pistache">
-              <PackageCheck className="size-3.5" />
-              pronto {formatHaMinutos(minPronto)}
-            </span>
-          ) : (
-            <span
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold tnum"
-              style={{ color: corTempo, backgroundColor: `${corTempo}1a` }}
-            >
-              <span className="size-2 rounded-full" style={{ backgroundColor: corTempo }} />
-              <Clock className="size-3.5" />
-              {minutos}m
-            </span>
-          )}
         </div>
 
         <ul className="mt-3 space-y-2 border-t border-[#2b1b18]/10 pt-3">

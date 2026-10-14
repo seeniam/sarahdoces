@@ -302,7 +302,7 @@ export function PainelClient() {
                 <VendasPorHoraChart dados={porHora} />
               </div>
             </Cartao>
-            <Cartao titulo="Centro × Cohama">
+            <Cartao titulo={`${nomeCurto("loja-1")} × ${nomeCurto("loja-2")}`}>
               <LojaVsLoja dados={porLoja} nomeCurto={nomeCurto} />
             </Cartao>
           </div>
@@ -334,10 +334,21 @@ export function PainelClient() {
             <Cartao
               titulo="Venda × Perda (14 dias)"
               extra={
-                <span className="text-sm text-muted-foreground">
-                  Perdas: <span className="font-semibold text-alerta tnum">{formatBRL(m.dre.perdas)}</span>{" "}
-                  ({formatPorcentagem(perdaPct, 1)})
-                </span>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-sm bg-cereja" />
+                    Venda
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-0 w-4 border-t-2 border-dashed border-doce-de-leite" />
+                    Perda
+                  </span>
+                  <span>
+                    Perdas:{" "}
+                    <span className="font-semibold text-doce-de-leite tnum">{formatBRL(m.dre.perdas)}</span>{" "}
+                    ({formatPorcentagem(perdaPct, 1)})
+                  </span>
+                </div>
               }
               className="lg:col-span-2"
             >

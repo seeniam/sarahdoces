@@ -288,8 +288,9 @@ export function CozinhaClient() {
         </button>
       )}
 
-      {/* Colunas */}
-      <div className="flex min-h-0 flex-1 gap-4 p-4">
+      {/* Colunas: no celular, cada coluna ocupa quase a tela e o quadro rola na
+          horizontal; a partir de sm, as três dividem o espaço. */}
+      <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-4 sm:gap-4">
         <KdsColuna
           titulo="Novos"
           comandas={novos}

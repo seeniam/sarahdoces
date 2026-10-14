@@ -48,13 +48,17 @@ export function VendaPerdaChart({ dados }: { dados: PontoVendaPerda[] }) {
           }
         />
         <Bar yAxisId="venda" dataKey="venda" fill="var(--color-cereja)" radius={[3, 3, 0, 0]} />
+        {/* Perda: linha tracejada âmbar (doce-de-leite) — cor e traço distintos
+            das barras de venda (cereja), para não se confundir. */}
         <Line
           yAxisId="perda"
           type="monotone"
           dataKey="perda"
-          stroke="var(--color-alerta)"
-          strokeWidth={2}
-          dot={{ r: 2, fill: "var(--color-alerta)" }}
+          stroke="var(--color-doce-de-leite)"
+          strokeWidth={2.5}
+          strokeDasharray="5 3"
+          dot={{ r: 2.5, fill: "var(--color-doce-de-leite)", strokeWidth: 0 }}
+          activeDot={{ r: 4 }}
         />
       </ComposedChart>
     </ResponsiveContainer>
