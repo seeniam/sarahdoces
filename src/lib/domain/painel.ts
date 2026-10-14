@@ -158,6 +158,25 @@ export interface MetricasPainel {
 }
 
 /**
+ * Perdas (R$) de um período [de, ate]. FONTE ÚNICA da perda em reais — a DRE,
+ * o card de perdas do painel (via soma do vendaXPerda) e o /financeiro usam
+ * esta mesma definição: soma de `perda.custo`. Nenhum número se contradiz
+ * (coberto por teste que compara os dois totais para o mesmo período).
+ */
+export function perdasNoPeriodo(
+  banco: BancoMock,
+  filtro: LojaFiltro,
+  deMs: number,
+  ateMs: number,
+): number {
+  return banco.perdas.reduce((s, p) => {
+    if (!noFiltro(p.lojaId, filtro)) return s;
+    const t = new Date(p.data).getTime();
+    return t >= deMs && t <= ateMs ? s + p.custo : s;
+  }, 0);
+}
+
+/**
  * DRE do período: Faturamento − CMV − Perdas − Despesas = Lucro.
  * FONTE ÚNICA — o painel (lucro estimado) e o /financeiro (cascata) usam esta
  * mesma função, então os números batem exatamente (coberto por teste).
@@ -179,10 +198,7 @@ export function dreDoPeriodo(
     faturamento += faturamentoDeComanda(c);
     cmv += cmvDeComanda(c, custoPorProduto);
   }
-  const perdas = banco.perdas.reduce(
-    (s, p) => (noFiltro(p.lojaId, filtro) && emJanela(p.data, j.atual) ? s + p.custo : s),
-    0,
-  );
+  const perdas = perdasNoPeriodo(banco, filtro, j.atual.inicio, j.atual.fim);
   const despesas = despesasDoPeriodo(banco, filtro, j);
   return calcularDRE({ faturamento, cmv, perdas, despesas });
 }

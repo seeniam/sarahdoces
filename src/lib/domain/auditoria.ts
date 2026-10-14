@@ -187,6 +187,10 @@ export function pontosDeAtencao(
 ): PontoAtencao[] {
   const deMs = de.getTime();
   const ateMs = ate.getTime();
+  // Janela explícita no texto (ex.: "nos últimos 30 dias") — para não haver
+  // ambiguidade com o alerta do painel, que fala de "esta semana" (7 dias).
+  const dias = Math.max(1, Math.round((ateMs - deMs) / 86_400_000));
+  const janelaTxt = dias === 7 ? "nesta semana" : `nos últimos ${dias} dias`;
   const noPeriodo = (iso: string) => {
     const t = new Date(iso).getTime();
     return t >= deMs && t <= ateMs;
@@ -235,12 +239,12 @@ export function pontosDeAtencao(
 
     if (razaoCancel >= 1.8 && b.cancelamentos >= 3) {
       observacoes.push(
-        `Cancelou ${b.cancelamentos} ${b.cancelamentos === 1 ? "item" : "itens"} no período — cerca de ${Math.round(razaoCancel)}× a média da equipe.`,
+        `Cancelou ${b.cancelamentos} ${b.cancelamentos === 1 ? "item" : "itens"} ${janelaTxt} — cerca de ${Math.round(razaoCancel)}× a média da equipe.`,
       );
     }
     if (b.descontos >= 2 && b.descontos > mediaOutrosDesc * 1.5) {
       observacoes.push(
-        `Aplicou ${b.descontos} descontos — acima da média da equipe.`,
+        `Aplicou ${b.descontos} descontos ${janelaTxt} — acima da média da equipe.`,
       );
     }
     if (b.caixaDiferencas >= 1) {

@@ -41,7 +41,7 @@ const TZ_OFFSET = "-03:00";
 const DIAS = 30;
 const SEED = 42;
 /** Bump invalida o cache persistido (força re-seed). */
-export const VERSAO_SEED = 7;
+export const VERSAO_SEED = 8;
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /** Data de hoje (YYYY-MM-DD) no fuso de São Luís. */
@@ -245,7 +245,9 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
         const total = Math.max(0, subtotal - (desconto ?? 0));
 
         // Cancelamento: Thiago cancela ~3× mais que os demais
-        const taxaCancel = atendenteId === "u-thiago" ? 0.09 : 0.03;
+        // Thiago cancela ~3× mais que os demais, com números realistas de um
+        // café (os demais ~5–6/mês; Thiago ~17–18/mês), não dezenas por semana.
+        const taxaCancel = atendenteId === "u-thiago" ? 0.022 : 0.008;
         const cancelada = rng.chance(taxaCancel);
 
         const criadaEm = dataNoDia(offset, hora, minuto);
@@ -435,8 +437,14 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
   ) => {
     const insumo = INSUMO_POR_ID.get(insumoId);
     if (!insumo) return;
+    const hora = rng.int(9, 18);
+    const minuto = rng.int(0, 59);
+    // Hoje, só registra perdas que já aconteceram (≤ agora). O painel e o
+    // estoque teórico nunca veem o futuro — senão a soma das movimentações
+    // não reconcilia com o teórico gravado (saldo inicial é retrocalculado).
+    if (offset === DIAS - 1 && hora * 60 + minuto > minutosAgora) return;
     const custo = Number((qtd * insumo.custoMedio).toFixed(2));
-    const data = dataNoDia(offset, rng.int(9, 18), rng.int(0, 59));
+    const data = dataNoDia(offset, hora, minuto);
     perdas.push({
       id: `perda-${(++seqPerda).toString().padStart(4, "0")}`,
       lojaId: loja,

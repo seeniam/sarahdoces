@@ -477,3 +477,48 @@ export function balancoInsumo(
     disponivel: Number(disponivel.toFixed(3)),
   };
 }
+
+/**
+ * Valores do balanço PRONTOS PARA EXIBIÇÃO, arredondados à mesma casa decimal e
+ * RECONCILIADOS: a soma dos segmentos (destinos) é exatamente o total, e as
+ * fontes (estoque inicial + comprado + transf. entrada) também somam o total.
+ * Assim nenhuma conta na tela se contradiz por arredondamento.
+ */
+export interface SegmentosBalanco {
+  vendido: number;
+  perdido: number;
+  transferenciaSaida: number;
+  emEstoque: number;
+  semExplicacao: number;
+  /** = vendido + perdido + transf.saída + em estoque + sem explicação. */
+  total: number;
+  comprado: number;
+  transferenciaEntrada: number;
+  /** "Plug" para as fontes fecharem no total (estoque inicial = total − comprado − transf.entrada). */
+  estoqueInicio: number;
+}
+
+export function segmentosBalanco(b: BalancoInsumo, casas = 1): SegmentosBalanco {
+  const r = (v: number) => Number(v.toFixed(casas));
+  const vendido = r(b.vendido);
+  const perdido = r(b.perdido);
+  const transferenciaSaida = r(b.transferenciaSaida);
+  const emEstoque = r(b.emEstoque);
+  const semExplicacao = r(Math.max(0, b.semExplicacao));
+  const total = r(vendido + perdido + transferenciaSaida + emEstoque + semExplicacao);
+  const comprado = r(b.comprado);
+  const transferenciaEntrada = r(b.transferenciaEntrada);
+  // Fecha as fontes no mesmo total (estoque inicial é o resto).
+  const estoqueInicio = r(total - comprado - transferenciaEntrada);
+  return {
+    vendido,
+    perdido,
+    transferenciaSaida,
+    emEstoque,
+    semExplicacao,
+    total,
+    comprado,
+    transferenciaEntrada,
+    estoqueInicio,
+  };
+}

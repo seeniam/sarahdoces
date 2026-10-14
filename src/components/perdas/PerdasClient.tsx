@@ -20,6 +20,7 @@ import type { DadosState } from "@/lib/store";
 import {
   ROTULO_MOTIVO_PERDA,
   balancoInsumo,
+  segmentosBalanco,
   faturamentoDeComanda,
   registrarEvento,
 } from "@/lib/domain";
@@ -301,16 +302,19 @@ function ParaOndeFoi({
   nomeLoja: string;
 }) {
   const un = balanco.unidade;
-  const total = balanco.disponivel || 1;
+  // Valores arredondados e RECONCILIADOS: a soma dos segmentos = total exibido.
+  const seg = segmentosBalanco(balanco, 1);
+  const q = (v: number) => `${formatNumero(v, 1)} ${un}`;
+  const total = seg.total || 1;
   const segmentos = [
-    { rotulo: "Vendido", qtd: balanco.vendido, cor: "bg-cereja" },
-    { rotulo: "Perdas", qtd: balanco.perdido, cor: "bg-doce-de-leite" },
-    { rotulo: "Transferido", qtd: balanco.transferenciaSaida, cor: "bg-azulejo" },
-    { rotulo: "Em estoque", qtd: balanco.emEstoque, cor: "bg-pistache" },
-    { rotulo: "Sem explicação", qtd: Math.max(0, balanco.semExplicacao), cor: "bg-alerta" },
+    { rotulo: "Vendido", qtd: seg.vendido, cor: "bg-cereja" },
+    { rotulo: "Perdas", qtd: seg.perdido, cor: "bg-doce-de-leite" },
+    { rotulo: "Transferido", qtd: seg.transferenciaSaida, cor: "bg-azulejo" },
+    { rotulo: "Em estoque", qtd: seg.emEstoque, cor: "bg-pistache" },
+    { rotulo: "Sem explicação", qtd: seg.semExplicacao, cor: "bg-alerta" },
   ].filter((s) => s.qtd > 0.001);
 
-  const reaisSemExpl = balanco.semExplicacao * balanco.custoMedio;
+  const reaisSemExpl = seg.semExplicacao * balanco.custoMedio;
 
   return (
     <section className="overflow-hidden rounded-[20px] border border-alerta/25 bg-gradient-to-br from-alerta/[0.06] to-transparent">
@@ -342,9 +346,8 @@ function ParaOndeFoi({
       <div className="space-y-4 px-5 py-4">
         <p className="text-sm text-muted-foreground">
           Tínhamos{" "}
-          <span className="font-medium text-foreground">{formatQuantidade(balanco.disponivel, un)}</span>{" "}
-          (estoque inicial {formatQuantidade(balanco.estoqueInicio, un)} + comprado{" "}
-          {formatQuantidade(balanco.comprado, un)}).
+          <span className="font-medium text-foreground">{q(total)}</span>{" "}
+          (estoque inicial {q(seg.estoqueInicio)} + comprado {q(seg.comprado)}).
         </p>
 
         {/* Barra empilhada única */}
@@ -354,7 +357,7 @@ function ParaOndeFoi({
               key={s.rotulo}
               className={cn("h-full", s.cor)}
               style={{ width: `${(s.qtd / total) * 100}%` }}
-              title={`${s.rotulo}: ${formatQuantidade(s.qtd, un)}`}
+              title={`${s.rotulo}: ${q(s.qtd)}`}
             />
           ))}
         </div>
@@ -365,7 +368,7 @@ function ParaOndeFoi({
             <span key={s.rotulo} className="inline-flex items-center gap-2">
               <span className={cn("size-2.5 rounded-full", s.cor)} />
               <span className="text-muted-foreground">{s.rotulo}</span>
-              <span className="tnum font-medium text-foreground">{formatQuantidade(s.qtd, un)}</span>
+              <span className="tnum font-medium text-foreground">{q(s.qtd)}</span>
             </span>
           ))}
         </div>
@@ -377,9 +380,9 @@ function ParaOndeFoi({
               <TriangleAlert className="mt-0.5 size-4 shrink-0 text-alerta" />
               <span className="text-foreground">
                 Dos{" "}
-                <span className="font-semibold">{formatQuantidade(balanco.comprado, un)}</span> comprados,{" "}
+                <span className="font-semibold">{q(seg.comprado)}</span> comprados,{" "}
                 <span className="font-semibold text-alerta">
-                  {formatQuantidade(balanco.semExplicacao, un)} ({formatBRL(reaisSemExpl)})
+                  {q(seg.semExplicacao)} ({formatBRL(reaisSemExpl)})
                 </span>{" "}
                 não têm explicação.
               </span>

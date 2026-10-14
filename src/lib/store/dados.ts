@@ -809,7 +809,7 @@ export const useDadosStore = create<DadosState>()(
       // v5 (Fase 7): sessões de caixa com fechamento por forma + despesas
       // avulsas no seed; ações de fechar caixa/sangria/suprimento/despesa.
       // Subir a versão descarta o cache v4 e o useHidratado regenera o seed.
-      version: 8,
+      version: 9,
       storage: createJSONStorage(() => storage),
       partialize: (s) => ({
         dataAncora: s.dataAncora,

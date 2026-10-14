@@ -174,7 +174,11 @@ export function PainelClient() {
   const nomeCurto = (id: LojaId) =>
     lojas.find((l) => l.id === id)?.nome.replace(/^Loja \d+\s*[—-]\s*/, "") ?? "";
 
-  const perdaPct = m.faturamento > 0 ? m.dre.perdas / m.faturamento : 0;
+  // Perdas DO MESMO período do gráfico (14 dias) e da mesma fonte (vXp), para o
+  // número bater com a linha de perda ao lado. Não usa a DRE do período do topo.
+  const perda14 = vXp.reduce((s, p) => s + p.perda, 0);
+  const venda14 = vXp.reduce((s, p) => s + p.venda, 0);
+  const perdaPct14 = venda14 > 0 ? perda14 / venda14 : 0;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
@@ -344,9 +348,9 @@ export function PainelClient() {
                     Perda
                   </span>
                   <span>
-                    Perdas:{" "}
-                    <span className="font-semibold text-doce-de-leite tnum">{formatBRL(m.dre.perdas)}</span>{" "}
-                    ({formatPorcentagem(perdaPct, 1)})
+                    Perdas (14 dias):{" "}
+                    <span className="font-semibold text-doce-de-leite tnum">{formatBRL(perda14)}</span>{" "}
+                    ({formatPorcentagem(perdaPct14, 1)})
                   </span>
                 </div>
               }
