@@ -14,8 +14,9 @@ import {
   useHidratado,
 } from "@/lib/store";
 import { podeAcessarRota, rotaInicial } from "@/lib/auth/navegacao";
-import { registrarEvento } from "@/lib/domain";
+import { registrarEvento, ROTULO_MOTIVO_PERDA } from "@/lib/domain";
 import { novoId, agoraISO } from "@/lib/id";
+import { formatNumero, formatQuantidade } from "@/lib/format";
 import { tocarSinoNovoPedido } from "@/lib/som";
 import type { CategoriaIcone } from "@/components/brand/icons";
 import type { Comanda, Perda, StatusComanda } from "@/types";
@@ -199,17 +200,20 @@ export function CozinhaClient() {
 
   function registrarPerda(perda: Perda, custo: number) {
     adicionarPerda(perda);
+    const insumoAlvo = insumos.find((i) => i.id === perda.insumoId);
     const nomeAlvo =
-      produtos.find((p) => p.id === perda.produtoId)?.nome ??
-      insumos.find((i) => i.id === perda.insumoId)?.nome ??
-      "item";
+      produtos.find((p) => p.id === perda.produtoId)?.nome ?? insumoAlvo?.nome ?? "item";
+    // Insumo → quantidade com unidade ("2,4 kg"); produto → nº de unidades ("2×").
+    const qtdLabel = insumoAlvo
+      ? formatQuantidade(perda.qtd, insumoAlvo.unidade)
+      : `${formatNumero(perda.qtd)}×`;
     adicionarEvento(
       registrarEvento(
         {
           tipo: "perda",
           lojaId: lojaAtual,
           usuarioId: usuario!.id,
-          descricao: `Perda registrada na cozinha: ${perda.qtd}× ${nomeAlvo} (${perda.motivo})`,
+          descricao: `Perda registrada na cozinha: ${qtdLabel} ${nomeAlvo} (${ROTULO_MOTIVO_PERDA[perda.motivo]})`,
           valorImpacto: -custo,
           refId: perda.id,
         },

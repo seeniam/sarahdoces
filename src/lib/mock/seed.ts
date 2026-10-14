@@ -22,6 +22,7 @@ import type {
 import { criarRng } from "./rng";
 import { consumoDaComanda } from "@/lib/domain/estoque";
 import { fecharCaixaCego } from "@/lib/domain/financeiro";
+import { formatBRL, formatBRLSinalado, formatQuantidade } from "@/lib/format";
 import {
   CATEGORIAS,
   FICHAS,
@@ -299,7 +300,7 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
             lojaId: loja.id,
             usuarioId: atendenteId,
             autorizadoPor: GERENTE,
-            descricao: `Desconto de R$ ${desconto} na comanda #${comanda.numero}`,
+            descricao: `Desconto de ${formatBRL(desconto)} na comanda #${comanda.numero}`,
             valorImpacto: -desconto,
             data: criadaEm,
             severidade: "atencao",
@@ -459,7 +460,7 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
         tipo: "perda",
         lojaId: loja,
         usuarioId: COZINHA_LOJA[loja],
-        descricao: `Perda de ${insumo.nome} (${qtd} ${insumo.unidade})`,
+        descricao: `Perda de ${insumo.nome} (${formatQuantidade(qtd, insumo.unidade)})`,
         valorImpacto: -custo,
         data,
         severidade: "info",
@@ -579,16 +580,20 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
       itens: itensContagem,
     });
 
-    // Evento da divergência da carne (Loja 1)
+    // Evento da divergência da carne (Loja 1) — descrição e valor DERIVADOS da
+    // divergência real da contagem (não repetem o "-2.4" plantado acima: o
+    // arredondamento do teórico pode deixá-lo ligeiramente diferente).
     if (loja.id === "loja-1") {
       const carne = INSUMO_POR_ID.get("ins-carne")!;
+      const itemCarne = itensContagem.find((i) => i.insumoId === "ins-carne")!;
+      const faltaQtd = Math.abs(itemCarne.diferenca);
       eventos.push({
         id: novoEventoId(),
         tipo: "contagem_divergencia",
         lojaId: loja.id,
         usuarioId: GERENTE,
-        descricao: "Carne: 2,4 kg sem explicação na contagem da semana",
-        valorImpacto: Number((-2.4 * carne.custoMedio).toFixed(2)),
+        descricao: `Carne: ${formatQuantidade(faltaQtd, carne.unidade)} sem explicação na contagem da semana`,
+        valorImpacto: Number((itemCarne.diferenca * carne.custoMedio).toFixed(2)),
         data: dataContagem,
         severidade: "critico",
         refId: `cont-${loja.id}`,
@@ -656,7 +661,7 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
             tipo: "caixa_diferenca",
             lojaId: loja.id,
             usuarioId: atendenteId,
-            descricao: `Caixa fechou com diferença de R$ ${diferenca.toFixed(2)}`,
+            descricao: `Caixa fechou com diferença de ${formatBRLSinalado(diferenca)}`,
             valorImpacto: Number(diferenca.toFixed(2)),
             data: dataNoDia(offset, 21, 5),
             severidade: "critico",

@@ -15,6 +15,7 @@ import type {
 } from "@/types";
 import { calcularDRE, type DRE } from "./financeiro";
 import { scoreDeRisco } from "./auditoria";
+import { formatBRL, formatQuantidade } from "@/lib/format";
 
 export type Periodo = "hoje" | "7dias" | "30dias";
 export type LojaFiltro = LojaId | "todas";
@@ -411,10 +412,7 @@ export function alertasPainel(
   const seteDias = fim - 7 * DIA_MS;
   const nomeLoja = (id: LojaId) =>
     banco.lojas.find((l) => l.id === id)?.nome.replace(/^Loja \d+\s*[—-]\s*/, "") ?? "";
-  const brl = (v: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-      Math.abs(v),
-    );
+  const brl = (v: number) => formatBRL(Math.abs(v));
 
   // 1) Atendente com cancelamentos acima da média (score de risco).
   const eventosSemana = banco.eventos.filter(
@@ -442,7 +440,7 @@ export function alertasPainel(
       alertas.push({
         id: `divergencia-${cont.lojaId}`,
         severidade: "critico",
-        texto: `${insumo?.nome ?? "Insumo"}: ${Math.abs(pior.diferenca).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${insumo?.unidade ?? ""} sem explicação em ${nomeLoja(cont.lojaId)} (${brl(custo)})`,
+        texto: `${insumo?.nome ?? "Insumo"}: ${formatQuantidade(Math.abs(pior.diferenca), insumo?.unidade ?? "")} sem explicação em ${nomeLoja(cont.lojaId)} (${brl(custo)})`,
         href: "/estoque",
       });
       break;

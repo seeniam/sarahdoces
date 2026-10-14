@@ -15,7 +15,7 @@ import { FotoProduto } from "@/components/shared/FotoProduto";
 import { cn } from "cn";
 import { ROTULO_MOTIVO_PERDA } from "@/lib/domain";
 import { novoId, agoraISO } from "@/lib/id";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatNumero } from "@/lib/format";
 import type { CategoriaIcone } from "@/components/brand/icons";
 import type {
   Insumo,
@@ -257,7 +257,7 @@ export function RegistrarPerdaModal({
               <Minus className="size-5" />
             </button>
             <span className="w-16 text-center font-display text-2xl tnum">
-              {decimal ? qtd.toFixed(1).replace(".", ",") : qtd}
+              {formatNumero(qtd, decimal ? 1 : 0)}
             </span>
             <button
               type="button"

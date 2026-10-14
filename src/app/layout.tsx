@@ -6,12 +6,14 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://sarah-rangel-doces.vercel.app"),
   title: {
-    default: "Sarah Rangel — Café & Confeitaria Artesanal",
+    default: "Sarah Rangel · Gestão",
     template: "%s · Sarah Rangel",
   },
   description:
     "Cada pedido registrado, cada grama de carne contada. Sistema de gestão para café & confeitaria.",
   applicationName: "Cereja",
+  // Demonstração privada: fora dos buscadores (ver também app/robots.ts).
+  robots: { index: false, follow: false },
   openGraph: {
     title: "Sarah Rangel — Café & Confeitaria Artesanal",
     description:

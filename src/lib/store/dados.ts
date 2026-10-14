@@ -33,6 +33,7 @@ import {
   USUARIOS,
 } from "@/lib/mock/data";
 import { novoId, agoraISO } from "@/lib/id";
+import { formatQuantidade } from "@/lib/format";
 import { sincronizarAbas } from "./sync";
 
 export type DadosState = BancoMock & {
@@ -382,7 +383,7 @@ export const useDadosStore = create<DadosState>()(
                 tipo: "contagem_divergencia",
                 lojaId,
                 usuarioId,
-                descricao: `Contagem: ${sinal} de ${Math.abs(it.diferenca).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ${insumo?.unidade ?? ""} de ${insumo?.nome ?? "insumo"}`,
+                descricao: `Contagem: ${sinal} de ${formatQuantidade(Math.abs(it.diferenca), insumo?.unidade ?? "")} de ${insumo?.nome ?? "insumo"}`,
                 valorImpacto: Number(valor.toFixed(2)),
                 severidade: it.diferenca < 0 ? "critico" : "atencao",
                 refId: contagem.id,

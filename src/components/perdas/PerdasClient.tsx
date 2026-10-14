@@ -25,7 +25,7 @@ import {
 } from "@/lib/domain";
 import { FICHA_POR_PRODUTO } from "@/lib/mock/data";
 import { novoId, agoraISO } from "@/lib/id";
-import { formatBRL, formatPorcentagem, formatQuantidade } from "@/lib/format";
+import { formatBRL, formatNumero, formatPorcentagem, formatQuantidade } from "@/lib/format";
 import type { CategoriaIcone } from "@/components/brand/icons";
 import type { LojaId, Perda } from "@/types";
 
@@ -121,15 +121,21 @@ export function PerdasClient() {
 
   function registrarPerda(perda: Perda, custo: number) {
     adicionarPerda(perda);
+    const insumoAlvo = perda.insumoId
+      ? banco.insumos.find((i) => i.id === perda.insumoId)
+      : undefined;
     const nomeAlvo =
-      nomeProduto.get(perda.produtoId ?? "") ?? nomeInsumo.get(perda.insumoId ?? "") ?? "item";
+      nomeProduto.get(perda.produtoId ?? "") ?? insumoAlvo?.nome ?? "item";
+    const qtdLabel = insumoAlvo
+      ? formatQuantidade(perda.qtd, insumoAlvo.unidade)
+      : `${formatNumero(perda.qtd)}×`;
     adicionarEvento(
       registrarEvento(
         {
           tipo: "perda",
           lojaId: perda.lojaId,
           usuarioId: perda.usuarioId,
-          descricao: `Perda registrada: ${perda.qtd}× ${nomeAlvo} (${ROTULO_MOTIVO_PERDA[perda.motivo]})`,
+          descricao: `Perda registrada: ${qtdLabel} ${nomeAlvo} (${ROTULO_MOTIVO_PERDA[perda.motivo]})`,
           valorImpacto: -custo,
           refId: perda.id,
         },
