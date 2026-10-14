@@ -23,10 +23,24 @@ import {
 } from "@/components/ui/sheet";
 import { NumeroHeroi } from "@/components/shared/NumeroHeroi";
 import { EstadoVazio } from "@/components/shared/EstadoVazio";
-import { VendasPorHoraChart } from "@/components/charts/VendasPorHoraChart";
+import dynamic from "next/dynamic";
 import { TopProdutosChart } from "@/components/charts/TopProdutosChart";
 import { FormasPagamentoBar } from "@/components/charts/FormasPagamentoBar";
-import { VendaPerdaChart } from "@/components/charts/VendaPerdaChart";
+
+// Gráficos Recharts carregados sob demanda (fora do bundle de hidratação do
+// painel) — reduz o tempo de bloqueio da thread principal na primeira carga.
+// O contêiner já reserva a altura, então não há deslocamento de layout.
+const esqueletoGrafico = () => (
+  <div className="size-full animate-pulse rounded-[12px] bg-muted/50" />
+);
+const VendasPorHoraChart = dynamic(
+  () => import("@/components/charts/VendasPorHoraChart").then((m) => m.VendasPorHoraChart),
+  { ssr: false, loading: esqueletoGrafico },
+);
+const VendaPerdaChart = dynamic(
+  () => import("@/components/charts/VendaPerdaChart").then((m) => m.VendaPerdaChart),
+  { ssr: false, loading: esqueletoGrafico },
+);
 import { useDadosStore, useSessaoStore } from "@/lib/store";
 import {
   metricasPainel,
@@ -210,6 +224,7 @@ export function PainelClient() {
           <select
             value={filtro}
             onChange={(e) => setLoja(e.target.value as LojaFiltro)}
+            aria-label="Filtrar por loja"
             className="h-9 rounded-full border border-border bg-card px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="todas">Todas as lojas</option>
@@ -249,7 +264,7 @@ export function PainelClient() {
               </span>
               <Variacao valor={m.variacao.faturamento} rotulo={`vs ${m.rotuloComparacao}`} />
               {m.descontos > 0 && (
-                <span className="text-pistache">
+                <span className="text-pistache-forte">
                   · {formatBRL(m.descontos)} em descontos
                 </span>
               )}
@@ -263,6 +278,7 @@ export function PainelClient() {
                 <Link
                   key={a.id}
                   href={a.href as never}
+                  data-tour={a.id === "caixa-diferenca" ? "alerta-caixa" : undefined}
                   className={cn(
                     "flex min-w-[82%] snap-start items-start gap-2.5 rounded-[14px] border p-3 transition-colors hover:bg-muted/40 sm:min-w-0",
                     SEV_CLS[a.severidade],
@@ -494,7 +510,7 @@ function Variacao({
     <span
       className={cn(
         "inline-flex items-center gap-1 text-xs font-medium",
-        positivo ? "text-pistache" : "text-alerta",
+        positivo ? "text-pistache-forte" : "text-alerta",
         compacto && "mt-1",
       )}
     >

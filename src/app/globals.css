@@ -48,6 +48,7 @@
   --color-acucar: var(--acucar);
   --color-cacau: var(--cacau);
   --color-pistache: var(--pistache);
+  --color-pistache-forte: var(--pistache-forte);
   --color-doce-de-leite: var(--doce-de-leite);
   --color-alerta: var(--alerta);
   /* Cor por loja: linguagem do sistema (Loja 1 = cereja, Loja 2 = azulejo) */
@@ -123,6 +124,7 @@
   --acucar: #f6dddf;
   --cacau: #2b1b18;
   --pistache: #5e7f36;
+  --pistache-forte: #4c6a2b;
   --doce-de-leite: #c98a2e;
   --alerta: #c8372d;
 }
@@ -174,6 +176,7 @@
   --azulejo: #6e9bd8;
   --acucar: #38241f;
   --pistache: #93b06a;
+  --pistache-forte: #93b06a;
   --doce-de-leite: #e0b05e;
   --alerta: #e05a4f;
 }
@@ -202,16 +205,45 @@
   }
 }
 
-/* Toasts com as cores da marca (sucesso = pistache, erro = alerta). */
+/* Toasts com as cores da marca. Cada variante tem um PAR próprio de cores de
+   primeiro plano (título + descrição na mesma família); a descrição é só um
+   pouco menos forte (branco 88%), nunca o cinza/cacau de fundo claro. Os fundos
+   coloridos são escurecidos o bastante para a descrição passar em AA (≥4,5:1).
+   Ícone e borda seguem o mesmo primeiro plano — o toast lê como uma peça só. */
+[data-sonner-toast] [data-description] {
+  /* Padrão (toast neutro): texto do popover um pouco mais suave, mas legível. */
+  color: var(--toast-desc, color-mix(in srgb, var(--normal-text) 82%, transparent));
+}
+[data-sonner-toast] [data-icon] {
+  color: var(--normal-text);
+}
+/* Fundos coloridos FIXOS (não seguem o tema): no modo escuro os tokens de marca
+   clareiam e o branco perderia o AA. Estes hexes são os da marca escurecidos o
+   suficiente para branco (título) e branco 88% (descrição) passarem em ≥4,5:1,
+   igual em tema claro e escuro. */
 [data-sonner-toast][data-type="success"] {
-  --normal-bg: var(--pistache);
+  --normal-bg: #476129; /* pistache −24% · branco 88% ≈ 5,9:1 */
   --normal-text: #fff;
-  --normal-border: color-mix(in srgb, var(--pistache), #000 14%);
+  --normal-border: color-mix(in srgb, #fff 26%, transparent);
+  --toast-desc: color-mix(in srgb, #fff 88%, transparent);
 }
 [data-sonner-toast][data-type="error"] {
-  --normal-bg: var(--alerta);
+  --normal-bg: #a82e26; /* alerta −16% · branco 88% ≈ 5,8:1 */
   --normal-text: #fff;
-  --normal-border: color-mix(in srgb, var(--alerta), #000 14%);
+  --normal-border: color-mix(in srgb, #fff 26%, transparent);
+  --toast-desc: color-mix(in srgb, #fff 88%, transparent);
+}
+[data-sonner-toast][data-type="warning"] {
+  --normal-bg: #855b1e; /* doce-de-leite −34% · branco 88% ≈ 5,0:1 */
+  --normal-text: #fff;
+  --normal-border: color-mix(in srgb, #fff 26%, transparent);
+  --toast-desc: color-mix(in srgb, #fff 88%, transparent);
+}
+[data-sonner-toast][data-type="info"] {
+  --normal-bg: #1a4680; /* azulejo −12% · branco 88% ≈ 7,9:1 */
+  --normal-text: #fff;
+  --normal-border: color-mix(in srgb, #fff 26%, transparent);
+  --toast-desc: color-mix(in srgb, #fff 88%, transparent);
 }
 
 /* Impressão: só a comanda térmica, em 80mm. */

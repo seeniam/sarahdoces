@@ -395,3 +395,43 @@ navegador). Nome/endereço das lojas são editáveis e persistem no banco mock.
 - **Config**: os campos das lojas re-sincronizam após "Resetar demonstração".
 - **Encomenda entregue** não é mais editável (evitava divergir da receita já
   lançada).
+
+## Fase 9 — Modo Apresentação e landing
+
+### D9.1 — Landing com recortes reais de tela
+A "/" usa foto-herói + três blocos dor → solução, cada um com um **screenshot
+real** do sistema (`public/images/landing/`: PDV, cozinha/KDS, perdas), não
+mockups. Página estática (server component) para carregar rápido. CTA único
+"Entrar na demonstração" → `/login` (o tour guiado fica no login e no menu).
+
+### D9.2 — Tour guiado por barramento de sinais
+O `TourOverlay` (montado no `AppShell`) navega até cada rota, destaca um
+elemento `[data-tour]` e narra. Passos que precisam que a TELA aja (montar a
+comanda, enviar, abrir o desconto) usam um "barramento de sinais" no
+`useTourStore`: o overlay emite, o `PdvClient` escuta e reusa as funções reais
+(inclusive a animação de impressão). O tour roda como a Sarah (Dona, acessa
+todas as rotas), SEMPRE reseta a demo primeiro e injeta um desconto recente
+para o fluxo ii. Alvo não encontrado (ex.: celular, comanda em sheet fechado)
+cai em balão centralizado — nunca trava.
+
+### D9.3 — Toasts com fundo colorido FIXO (contraste AA)
+No modo escuro os tokens de marca clareiam; usá-los como fundo de toast deixaria
+o branco abaixo de AA. Então os 4 fundos (sucesso/erro/atenção/info) são hexes
+escurecidos fixos, iguais nos dois temas, com título branco e descrição branco
+88% (≥4,5:1). Ícone e borda seguem o mesmo primeiro plano. Demo em `/design-system`.
+
+### D9.4 — `pistache-forte` para texto pequeno em superfície clara
+O pistache #5E7F36 em 12px sobre branco fica no limite do AA. Criamos um token
+derivado `--pistache-forte` (#4C6A2B no claro, #93B06A no escuro) só para texto
+pequeno positivo (deltas do painel). O pistache puro continua nos preenchimentos.
+
+### D9.5 — Lighthouse: landing cumpre; painel limitado pela arquitetura mock
+Landing (desktop): performance 99, acessibilidade 100, boas práticas 100. SEO
+66 é **só** o `noindex` exigido (`is-crawlable`); os demais itens passam.
+Painel: acessibilidade 100, boas práticas 100; performance ~45–63 (ruidoso em
+máquina local carregada). O gargalo é o custo de thread do protótipo
+frontend-only: geração/parse do seed de 30 dias no cliente + hidratação do
+Recharts. Mitigações aplicadas: gráficos Recharts carregados sob demanda
+(`next/dynamic`, sem bloquear a hidratação). Chegar a ≥90 no painel exigiria
+mover o seed para um web worker ou embarcar um dataset pré-gerado — decisão
+arquitetural deliberada, desproporcional para um protótipo de apresentação.

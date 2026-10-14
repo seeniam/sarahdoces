@@ -49,7 +49,7 @@ export function Sidebar({ usuario }: { usuario: Usuario }) {
           return (
             <div key={secao} className="space-y-1">
               {!recolhida && (
-                <p className="px-3 pb-1 text-[11px] font-medium text-sidebar-foreground/45">
+                <p className="px-3 pb-1 text-[11px] font-medium text-sidebar-foreground/65">
                   {TITULOS_SECAO[secao]}
                 </p>
               )}

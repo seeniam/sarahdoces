@@ -236,6 +236,7 @@ export function ComandaViva({
             className="h-12 text-base"
             disabled={itens.length === 0}
             onClick={tentarEnviar}
+            data-tour="pdv-enviar"
           >
             <Send className="size-4" />
             Enviar para cozinha

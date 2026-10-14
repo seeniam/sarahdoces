@@ -27,6 +27,7 @@ import {
   useSessaoStore,
   useComandaStore,
 } from "@/lib/store";
+import { useTourStore } from "@/lib/store/tour";
 import { registrarEvento } from "@/lib/domain";
 import { PRODUTO_POR_ID } from "@/lib/mock/data";
 import { novoId, agoraISO } from "@/lib/id";
@@ -144,6 +145,52 @@ export function PdvClient() {
     0,
   );
   const totalCart = Math.max(0, subtotalCart - cart.desconto);
+
+  // Cooperação com o Modo Apresentação: o overlay do tour emite sinais e o PDV
+  // age (monta a comanda, envia, abre o desconto). Assim o tour mostra as telas
+  // reais fazendo o que a Sarah vê no dia a dia — com dados preparados.
+  const tourAtivo = useTourStore((s) => s.ativo);
+  const sinalTour = useTourStore((s) => s.sinal);
+  // Ancorado no sinal ATUAL (o `n` vive na store, fora do ciclo do componente):
+  // assim um sinal emitido antes desta montagem não é reexecutado ao remontar o
+  // PDV (ex.: pular o tour e voltar ao /pdv não deve refazer a comanda).
+  const ultimoSinal = useRef(useTourStore.getState().sinal.n);
+  useEffect(() => {
+    if (sinalTour.n === ultimoSinal.current) return;
+    ultimoSinal.current = sinalTour.n;
+    const nome = sinalTour.nome;
+    // Fora do ciclo do efeito: evita setState síncrono em cascata.
+    queueMicrotask(() => {
+      switch (nome) {
+        case "pdv:montar": {
+          if (!sessaoAberta) abrirCaixa(200);
+          cart.limpar();
+          cart.setTipo("mesa");
+          cart.setIdentificador("4");
+          const pf = produtos.find((p) => p.id === "prod-pf-carne");
+          const suco = produtos.find((p) => p.id === "prod-suco");
+          if (pf) cart.adicionar(pf);
+          if (suco) cart.adicionar(suco);
+          break;
+        }
+        case "pdv:enviar":
+          enviar();
+          break;
+        case "pdv:abrir-desconto": {
+          if (cart.itens.length === 0) {
+            const pf = produtos.find((p) => p.id === "prod-pf-carne");
+            if (pf) cart.adicionar(pf);
+          }
+          abrirDesconto();
+          break;
+        }
+        case "pdv:fechar-impressao":
+          setImpressao(null);
+          break;
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sinalTour]);
 
   if (!usuario) return null;
 
@@ -404,7 +451,10 @@ export function PdvClient() {
 
       {/* Abertura de caixa obrigatória (não reabre enquanto a conferência
           do fechamento ainda está na tela). */}
-      <AberturaCaixa aberto={!sessaoAberta && !fecharCaixaAberto} onAbrir={abrirCaixa} />
+      <AberturaCaixa
+        aberto={!sessaoAberta && !fecharCaixaAberto && !tourAtivo}
+        onAbrir={abrirCaixa}
+      />
 
       {/* Fechamento cego (gerido no PDV para sobreviver ao fim da sessão) */}
       <FecharCaixaSheet

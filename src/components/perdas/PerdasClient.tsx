@@ -375,7 +375,10 @@ function ParaOndeFoi({
 
         {/* Destaque sem explicação */}
         {balanco.semExplicacao > 0.01 ? (
-          <div className="flex flex-col gap-3 rounded-[16px] border border-alerta/30 bg-alerta/8 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            data-tour="carne-sem-explicacao"
+            className="flex flex-col gap-3 rounded-[16px] border border-alerta/30 bg-alerta/8 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+          >
             <p className="flex items-start gap-2 text-sm">
               <TriangleAlert className="mt-0.5 size-4 shrink-0 text-alerta" />
               <span className="text-foreground">

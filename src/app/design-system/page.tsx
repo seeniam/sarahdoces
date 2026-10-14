@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { ICONES_CATEGORIA } from "@/components/brand/icons";
 import { Button } from "@/components/ui/button";
+import { ToastDemo } from "@/components/design-system/ToastDemo";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatBRL } from "@/lib/format";
@@ -183,6 +184,16 @@ export default function DesignSystemPage() {
               <Plus />
             </Button>
           </div>
+        </Card>
+      </Secao>
+
+      {/* Toasts */}
+      <Secao
+        titulo="Avisos (toasts)"
+        descricao="Cada variante tem seu par de cores (título + descrição na mesma família), com contraste AA sobre o fundo. Toque para disparar."
+      >
+        <Card className="p-6">
+          <ToastDemo />
         </Card>
       </Secao>
 

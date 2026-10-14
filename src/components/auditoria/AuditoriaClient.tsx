@@ -203,7 +203,7 @@ export function AuditoriaClient() {
               descricao="Ajuste os filtros ou o período para ver os registros de auditoria."
             />
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-2" data-tour="auditoria-lista">
               {eventos.map((e) => (
                 <EventoLinha key={e.id} evento={e} banco={banco} onClick={() => setEventoAberto(e)} />
               ))}

@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "cn";
 import { Azulejo } from "@/components/brand/Azulejo";
 import { Logo } from "@/components/brand/Logo";
+import { useIniciarTour } from "@/components/tour/usarTour";
 import { BLUR_ESCURO } from "@/lib/brand/blur";
 import { PinPad } from "./PinPad";
 import { USUARIOS } from "@/lib/mock/data";
@@ -49,6 +50,7 @@ const COZINHA = USUARIOS.filter((u) => u.perfil === "cozinha");
 export function LoginClient() {
   const router = useRouter();
   const entrar = useSessaoStore((s) => s.entrar);
+  const iniciarTour = useIniciarTour();
   const semMovimento = useReducedMotion();
 
   const [selecionado, setSelecionado] = useState<Usuario | null>(null);
@@ -150,6 +152,26 @@ export function LoginClient() {
                     Toque no seu perfil para digitar o PIN.
                   </p>
                 </div>
+
+                {/* Tour guiado: reseta a demo e conduz pelos 4 fluxos */}
+                <button
+                  type="button"
+                  onClick={() => iniciarTour({ comLogin: true })}
+                  className="flex min-h-[64px] w-full items-center gap-3 rounded-[16px] border border-azulejo/30 bg-azulejo/10 p-4 text-left transition-colors hover:bg-azulejo/15 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-azulejo/15"
+                >
+                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-azulejo text-white">
+                    <Sparkles className="size-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-base text-foreground">
+                      Ver demonstração guiada
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Um tour de 2 minutos pelos 4 pontos que mais pesam.
+                    </p>
+                  </div>
+                  <ChevronRight className="size-5 shrink-0 text-azulejo" />
+                </button>
 
                 {/* Sarah em destaque (abre a demonstração) */}
                 <button

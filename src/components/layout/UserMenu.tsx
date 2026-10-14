@@ -7,11 +7,13 @@ import {
   ChevronDown,
   LogOut,
   Moon,
+  PlayCircle,
   RotateCcw,
   Sun,
   Volume2,
   VolumeX,
 } from "lucide-react";
+import { useIniciarTour } from "@/components/tour/usarTour";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +44,7 @@ export function UserMenu({ usuario }: { usuario: Usuario }) {
   const resetarDemo = useDadosStore((s) => s.resetarDemo);
   const somImpressao = usePreferenciasStore((s) => s.somImpressao);
   const alternarSom = usePreferenciasStore((s) => s.alternarSomImpressao);
+  const iniciarTour = useIniciarTour();
   const escuro = resolvedTheme === "dark";
 
   function trocarUsuario() {
@@ -79,6 +82,10 @@ export function UserMenu({ usuario }: { usuario: Usuario }) {
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => iniciarTour()}>
+          <PlayCircle className="size-4" />
+          Modo apresentação
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme(escuro ? "light" : "dark")}>
           {escuro ? <Sun className="size-4" /> : <Moon className="size-4" />}
           {escuro ? "Tema claro" : "Tema cacau"}

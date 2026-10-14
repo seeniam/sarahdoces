@@ -7,6 +7,7 @@ import { podeAcessarRota, rotaInicial } from "@/lib/auth/navegacao";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { BottomNav } from "./BottomNav";
+import { TourOverlay } from "@/components/tour/TourOverlay";
 
 function ShellSkeleton() {
   return (
@@ -63,6 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
         <BottomNav usuario={usuario} />
       </div>
+      <TourOverlay />
     </div>
   );
 }
