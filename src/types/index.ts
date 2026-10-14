@@ -93,6 +93,20 @@ export type Fornecedor =
   | "Açougue Bom Corte"
   | "Hortifruti";
 
+/**
+ * Tipo de movimentação de estoque. Toda alteração do estoque teórico é uma
+ * entrada (+) ou uma saída (−). O estoque teórico é a soma das movimentações.
+ */
+export type TipoMovimentacao =
+  | "saldo_inicial" // abertura do período (+)
+  | "compra" // entrada por compra (+)
+  | "consumo" // baixa por venda, via ficha técnica (−)
+  | "estorno" // devolução ao estoque (item cancelado antes do preparo) (+)
+  | "perda" // baixa por perda registrada (−)
+  | "transferencia_entrada" // recebida de outra loja (+)
+  | "transferencia_saida" // enviada para outra loja (−)
+  | "ajuste_contagem"; // acerto do teórico ao físico após a contagem (±)
+
 export type CategoriaDespesa =
   | "aluguel"
   | "salarios"
@@ -172,6 +186,29 @@ export interface EstoqueLoja {
   qtdTeorica: number;
   qtdUltimaContagem: number;
   dataContagem: ISODate | null;
+}
+
+/**
+ * Uma linha do extrato de estoque (movimentação). Derivada das coleções do
+ * banco (compras, comandas, perdas, transferências, contagens) por
+ * `construirMovimentacoes` em `lib/domain/estoque.ts` — não é persistida.
+ */
+export interface Movimentacao {
+  id: string;
+  data: ISODate;
+  lojaId: LojaId;
+  insumoId: InsumoId;
+  tipo: TipoMovimentacao;
+  /** Delta no estoque na unidade do insumo: positivo = entrada, negativo = saída. */
+  qtd: number;
+  /** Custo unitário (R$/unidade) associado, quando aplicável (compra). */
+  custoUnit?: number;
+  /** Responsável, quando houver. */
+  usuarioId?: UsuarioId;
+  /** Referência à entidade de origem (compra, comanda, perda, contagem…). */
+  refId?: string;
+  /** Rótulo pronto para o extrato (ex.: "Compra · Açougue Bom Corte"). */
+  descricao: string;
 }
 
 export interface ItemFicha {

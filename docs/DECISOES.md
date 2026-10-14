@@ -229,3 +229,73 @@ pelo tique do relógio.
 Antes das 6h30 (Fortaleza), "hoje" mostra um estado próprio ("A loja ainda não
 abriu. Ontem: R$ X") em vez de gráficos zerados. A hidratação é coberta pelo
 skeleton do AppShell.
+
+## Fase 6 — Estoque, compras, contagem, fichas técnicas e perdas
+
+### D6.1 — Movimentação é uma visão DERIVADA (não uma coleção persistida)
+O estoque teórico "= soma das movimentações" (compra, consumo, perda,
+transferência, ajuste de contagem, saldo inicial), mas **não** refizemos o
+modelo de persistência: `construirMovimentacoes()` (em `lib/domain/estoque.ts`)
+monta o extrato de um insumo/loja a partir das coleções que já existem (compras,
+comandas, perdas, transferências, contagens). O **saldo inicial** é o "plug" que
+reconcilia a soma ao teórico gravado (`EstoqueLoja.qtdTeorica`), de modo que
+`estoqueTeorico(now)` sempre bate com `qtdTeorica` (teste cobre todos os pares).
+Motivo: ganhar o extrato e o balanço exigidos sem um refactor destrutivo da store
+(que já mantém `qtdTeorica` nas mutações). O consumo por venda é **agregado por
+dia** no extrato (uma linha por dia), para ficar legível.
+
+### D6.2 — "Sem explicação" é a mesma conta do painel
+O balanço "Para onde foi a carne?" (`balancoInsumo()`) e o alerta de divergência
+do painel usam o **mesmo** número: `teórico ao fim do período − contado`. Para
+isso o período do balanço **termina na data da contagem** e o seed passou a
+gravar o `teorico` da contagem **no momento da contagem** (não o teórico final de
+hoje). A contagem física é dada às **23h** do dia (depois do último pedido), para
+o consumo diário agregado cair inteiro antes dela e a conta reconciliar exata
+(teste: carne Loja 1 = 2,4 kg = R$ 91,20, igual ao painel).
+
+### D6.3 — A contagem NÃO sobrescreve o teórico
+Registrar uma contagem grava o físico (`qtdUltimaContagem` + `dataContagem`) e
+expõe a divergência, mas **não** acerta o teórico ao contado. Isso mantém a
+história "a carne que some" visível (teórico 10 × contado 7,6) e mantém a
+reconciliação do extrato. Divergência relevante (> 3% ou > R$ 20) gera
+`EventoAuditoria` crítico.
+
+### D6.4 — Contagem cega = mesmo princípio do caixa cego
+Na `/estoque/contagem` o gerente digita o contado **sem ver o teórico**; a
+divergência (qtd e R$) só aparece ao concluir. Conta um subconjunto de insumos de
+maior valor/giro (não os ~40), com campos numéricos grandes e progresso.
+
+### D6.5 — Compra atualiza custo médio e lança saída no financeiro
+`registrarCompra` entra no estoque, recalcula o **custo médio ponderado** do
+insumo (estoque negativo não credita custo) e lança uma **despesa paga** (saída
+no financeiro). Simplificação da demo: a despesa usa a categoria "outros"; o DRE
+da Fase 7 refina a relação compra × CMV.
+
+### D6.6 — Fichas editáveis só na sessão (não persistem)
+No detalhe da ficha técnica dá para simular quantidades e ver o CMV/margem
+recalcularem ao vivo, mas os ajustes **não são salvos** (demo). A calculadora de
+rendimento vem pré-preenchida com a quantidade de carne da última compra.
+
+### D6.7 — Sub-navegação do estoque por abas de rota
+`/estoque`, `/estoque/compras`, `/estoque/contagem` e `/estoque/transferencias`
+compartilham uma barra de abas (`EstoqueNav`). O menu lateral mantém só a entrada
+`/estoque` (o resto é sub-rota, já coberto por `podeAcessarRota`).
+
+### D6.8 — Correções da revisão adversarial da Fase 6
+Revisão em workflow (4 dimensões + verificação por achado). Aplicados:
+- **Saldo inicial determinístico**: insumos sem movimentação própria tinham o
+  saldo inicial carimbado com `new Date()` (relógio real) — quebrava o seed
+  determinístico e `estoqueTeorico(ate)`. Agora a âncora é o início do banco
+  (1ª data de comanda/compra), coberto por teste.
+- **Custo médio global ponderado por TODAS as lojas**: como `custoMedio` é por
+  insumo (global), a compra numa loja pondera com o estoque das duas, senão
+  distorceria o valor em R$ da outra (inclusive o R$ 91,20 do painel).
+- Fichas: edição de quantidade como texto (permite decimais ao digitar).
+- Contagem: trocar de loja zera a contagem em andamento.
+- "Repetir última do Mateus" abre a folha já preenchida.
+- Extrato: rótulo "Em estoque (contado/teórico)" conforme houve contagem.
+- Compra: total exibido só soma linhas válidas; inputs com `aria-label`.
+
+Mantido de propósito: o bloco "Para onde foi a carne?" é **sempre 7 dias até a
+contagem** (não segue o seletor 7/30 do painel de perdas), para a conta bater
+exatamente com o alerta do painel; o cabeçalho diz "Últimos 7 dias".

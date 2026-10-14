@@ -40,7 +40,7 @@ const TZ_OFFSET = "-03:00";
 const DIAS = 30;
 const SEED = 42;
 /** Bump invalida o cache persistido (força re-seed). */
-export const VERSAO_SEED = 2;
+export const VERSAO_SEED = 3;
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /** Data de hoje (YYYY-MM-DD) no fuso de São Luís. */
@@ -388,8 +388,19 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
     }
   }
 
-  // ---- Consumo teórico acumulado por loja/insumo ----
+  // A contagem física da semana acontece 2 dias atrás, no fim do expediente
+  // (23h). A hora fica DEPOIS do último pedido do dia para que o consumo diário
+  // (agregado por dia nas movimentações) caia inteiro antes da contagem — assim
+  // a soma reconcilia e o balanço "sem explicação" bate exatamente com o painel.
+  const OFFSET_CONTAGEM = DIAS - 2;
+  const dataContagemISO = dataNoDia(OFFSET_CONTAGEM, 23, 0);
+
+  // ---- Consumo teórico acumulado por loja/insumo (total e até a contagem) ----
   const consumo: Record<LojaId, Map<InsumoId, number>> = {
+    "loja-1": new Map(),
+    "loja-2": new Map(),
+  };
+  const consumoAteContagem: Record<LojaId, Map<InsumoId, number>> = {
     "loja-1": new Map(),
     "loja-2": new Map(),
   };
@@ -397,11 +408,19 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
     if (c.status === "cancelada") continue;
     const uso = consumoDaComanda(c, FICHA_POR_PRODUTO);
     const alvo = consumo[c.lojaId];
-    for (const [ins, q] of uso) alvo.set(ins, (alvo.get(ins) ?? 0) + q);
+    const ate = c.criadaEm <= dataContagemISO ? consumoAteContagem[c.lojaId] : null;
+    for (const [ins, q] of uso) {
+      alvo.set(ins, (alvo.get(ins) ?? 0) + q);
+      if (ate) ate.set(ins, (ate.get(ins) ?? 0) + q);
+    }
   }
 
   // ---- Perdas (ovo acima do normal na Loja 1; carne eventual) ----
   const perdaQtd: Record<LojaId, Map<InsumoId, number>> = {
+    "loja-1": new Map(),
+    "loja-2": new Map(),
+  };
+  const perdaQtdAteContagem: Record<LojaId, Map<InsumoId, number>> = {
     "loja-1": new Map(),
     "loja-2": new Map(),
   };
@@ -428,6 +447,12 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
       data,
     });
     perdaQtd[loja].set(insumoId, (perdaQtd[loja].get(insumoId) ?? 0) + qtd);
+    if (data <= dataContagemISO) {
+      perdaQtdAteContagem[loja].set(
+        insumoId,
+        (perdaQtdAteContagem[loja].get(insumoId) ?? 0) + qtd,
+      );
+    }
     if (custo >= 25) {
       eventos.push({
         id: novoEventoId(),
@@ -458,6 +483,9 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
   // ---- Estoque teórico final = inicial + compras − consumo − perdas ----
   // Geramos compras suficientes para manter o estoque num nível saudável.
   const estoque: EstoqueLoja[] = [];
+  // Teórico na data da contagem (as compras do mês ocorrem todas antes dela):
+  // teórico_contagem = inicial + comprado − consumo_até_contagem − perda_até_contagem.
+  const teoricoNaContagem = new Map<string, number>();
   let seqCompra = 0;
   const comprasPorFornecedorSemana: Record<string, Compra> = {};
 
@@ -465,10 +493,16 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
     for (const insumo of INSUMOS) {
       const cons = consumo[loja.id].get(insumo.id) ?? 0;
       const perd = perdaQtd[loja.id].get(insumo.id) ?? 0;
+      const consAte = consumoAteContagem[loja.id].get(insumo.id) ?? 0;
+      const perdAte = perdaQtdAteContagem[loja.id].get(insumo.id) ?? 0;
       const inicial = insumo.estoqueMinimo * 4;
       const desejadoFinal = insumo.estoqueMinimo * 3;
       const totalComprar = Math.max(0, cons + perd + desejadoFinal - inicial);
       const qtdFinal = Number((inicial + totalComprar - cons - perd).toFixed(3));
+      teoricoNaContagem.set(
+        `${loja.id}:${insumo.id}`,
+        Number((inicial + totalComprar - consAte - perdAte).toFixed(3)),
+      );
 
       estoque.push({
         insumoId: insumo.id,
@@ -518,10 +552,14 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
     "ins-queijo", "ins-flocao", "ins-cafe-po",
   ];
   for (const loja of LOJAS) {
-    const dataContagem = dataNoDia(DIAS - 2, 20, 0);
+    const dataContagem = dataContagemISO;
     const itensContagem = INSUMOS_CONTAGEM.map((insumoId) => {
       const e = estoquePorChave.get(`${loja.id}:${insumoId}`)!;
-      const teorico = Number(e.qtdTeorica.toFixed(3));
+      // Teórico AO MOMENTO da contagem (não o teórico final de hoje): assim a
+      // soma das movimentações reconcilia e o balanço bate com o painel.
+      const teorico =
+        teoricoNaContagem.get(`${loja.id}:${insumoId}`) ??
+        Number(e.qtdTeorica.toFixed(3));
       // Divergência plantada: carne na Loja 1 some 2,4 kg "sem explicação"
       let contado: number;
       if (loja.id === "loja-1" && insumoId === "ins-carne") {
