@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import type { LojaId, UsuarioId } from "@/types";
-import { sincronizarAbas } from "./sync";
 
 export type LojaAtiva = LojaId | "todas";
 
@@ -44,6 +43,6 @@ export const useSessaoStore = create<SessaoState>()(
   ),
 );
 
-if (typeof window !== "undefined") {
-  sincronizarAbas("cereja-sessao", useSessaoStore);
-}
+// A SESSÃO não sincroniza entre abas: o KDS (cozinha) e o PDV (atendente) podem
+// estar logados como usuários diferentes em abas do mesmo navegador. Só os DADOS
+// (comandas, estoque…) sincronizam — ver dados.ts / sync.ts.

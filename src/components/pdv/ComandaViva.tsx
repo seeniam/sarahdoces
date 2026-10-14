@@ -56,6 +56,7 @@ export function ComandaViva({
     itens,
     desconto,
     cortesia,
+    autorizadoPorNome,
     setTipo,
     setIdentificador,
     incluir,
@@ -198,10 +199,17 @@ export function ComandaViva({
       {/* Rodapé: desconto + total + enviar */}
       <div className="space-y-3 px-4 pt-3">
         {desconto > 0 && (
-          <div className="flex items-center justify-between text-sm text-pistache">
-            <span className="inline-flex items-center gap-1.5">
-              <Tag className="size-3.5" />
-              {cortesia ? "Cortesia" : "Desconto"}
+          <div className="flex items-start justify-between gap-2 text-sm text-pistache">
+            <span className="min-w-0">
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <Tag className="size-3.5" />
+                {cortesia ? "Cortesia" : "Desconto"}
+              </span>
+              {autorizadoPorNome && (
+                <span className="block text-xs text-muted-foreground">
+                  autorizado por {autorizadoPorNome}
+                </span>
+              )}
             </span>
             <span className="tnum">−{formatBRL(desconto)}</span>
           </div>

@@ -4,6 +4,7 @@ import type {
   FichaTecnica,
   Insumo,
   InsumoId,
+  ItemComanda,
   ItemContagem,
   ProdutoId,
 } from "@/types";
@@ -29,6 +30,8 @@ export function consumoDaComanda(
     consumo.set(insumoId, (consumo.get(insumoId) ?? 0) + qtd);
 
   for (const item of comanda.itens) {
+    // Item cancelado não consome insumo (o estorno é tratado à parte).
+    if (item.cancelado) continue;
     const ficha = fichasByProduto.get(item.produtoId);
     if (ficha) {
       for (const ing of ficha.itens) somar(ing.insumoId, ing.qtd * item.qtd);
@@ -39,6 +42,31 @@ export function consumoDaComanda(
     }
   }
   return consumo;
+}
+
+/**
+ * Estorna (soma de volta) a baixa de UM item da comanda no estoque da loja.
+ * Usado quando um item é cancelado ANTES de ser preparado. Função pura.
+ * O item sintético força `cancelado: false` para que o consumo seja calculado
+ * mesmo sendo um item que acabou de ser marcado como cancelado.
+ */
+export function estornarEstoqueDeItem(
+  estoque: EstoqueLoja[],
+  comanda: Comanda,
+  item: ItemComanda,
+  fichasByProduto: Map<ProdutoId, FichaTecnica>,
+): EstoqueLoja[] {
+  const consumo = consumoDaComanda(
+    { ...comanda, itens: [{ ...item, cancelado: false }] },
+    fichasByProduto,
+  );
+  if (consumo.size === 0) return estoque;
+  return estoque.map((e) => {
+    if (e.lojaId !== comanda.lojaId) return e;
+    const volta = consumo.get(e.insumoId);
+    if (!volta) return e;
+    return { ...e, qtdTeorica: e.qtdTeorica + volta };
+  });
 }
 
 /**

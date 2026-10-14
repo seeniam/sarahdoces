@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { CategoriaRail } from "./CategoriaRail";
 import { GradeProdutos } from "./GradeProdutos";
 import { ComandaViva } from "./ComandaViva";
@@ -25,6 +26,7 @@ import {
   useComandaStore,
 } from "@/lib/store";
 import { registrarEvento } from "@/lib/domain";
+import { PRODUTO_POR_ID } from "@/lib/mock/data";
 import { novoId, agoraISO } from "@/lib/id";
 import { formatBRL } from "@/lib/format";
 import type {
@@ -33,12 +35,28 @@ import type {
   LojaId,
   Pagamento as TPagamento,
   SessaoCaixa,
+  Usuario,
 } from "@/types";
 
 const PRESET_DESCONTO = [2, 3, 5, 10];
 
+type MotivoCancelId = "desistiu" | "erro_lancamento" | "preparado_errado" | "outro";
+const MOTIVOS_CANCELAR: { id: MotivoCancelId; label: string }[] = [
+  { id: "desistiu", label: "Cliente desistiu" },
+  { id: "erro_lancamento", label: "Erro de lançamento" },
+  { id: "preparado_errado", label: "Preparado errado" },
+  { id: "outro", label: "Outro" },
+];
+const MOTIVO_LABEL = Object.fromEntries(
+  MOTIVOS_CANCELAR.map((m) => [m.id, m.label]),
+) as Record<MotivoCancelId, string>;
+
 function totalComanda(c: Comanda) {
-  const sub = c.itens.reduce((s, it) => s + it.precoUnit * it.qtd, 0);
+  // Itens cancelados não são cobrados.
+  const sub = c.itens.reduce(
+    (s, it) => s + (it.cancelado ? 0 : it.precoUnit * it.qtd),
+    0,
+  );
   return Math.max(0, sub - (c.desconto ?? 0));
 }
 
@@ -52,6 +70,7 @@ export function PdvClient() {
   const sessoesCaixa = useDadosStore((s) => s.sessoesCaixa);
   const enviarComandaStore = useDadosStore((s) => s.enviarComanda);
   const avancarStatusComanda = useDadosStore((s) => s.avancarStatusComanda);
+  const cancelarItemComanda = useDadosStore((s) => s.cancelarItemComanda);
   const registrarPagamento = useDadosStore((s) => s.registrarPagamento);
   const abrirCaixaStore = useDadosStore((s) => s.abrirCaixa);
   const adicionarEvento = useDadosStore((s) => s.adicionarEvento);
@@ -82,6 +101,18 @@ export function PdvClient() {
   const [impressao, setImpressao] = useState<Comanda | null>(null);
   const [pagamentoComanda, setPagamentoComanda] = useState<Comanda | null>(null);
   const [cancelando, setCancelando] = useState<Comanda | null>(null);
+  const [cancelandoItem, setCancelandoItem] = useState<{
+    comanda: Comanda;
+    itemIndex: number;
+  } | null>(null);
+  const [motivoItem, setMotivoItem] = useState<MotivoCancelId | null>(null);
+  const [motivoOutro, setMotivoOutro] = useState("");
+  const [ticketCancelamento, setTicketCancelamento] = useState<{
+    comanda: Comanda;
+    itemIndex: number;
+    autorizadorNome: string;
+    motivo: string;
+  } | null>(null);
 
   const produtosFiltrados = produtos.filter(
     (p) => p.ativo && (!categoriaSel || p.categoriaId === categoriaSel),
@@ -116,7 +147,7 @@ export function PdvClient() {
 
   function aplicarDesconto(autorizador: (typeof usuarios)[number], motivo: string) {
     const valor = cortesia ? subtotalCart : descontoValor;
-    cart.aplicarDesconto(valor, cortesia, motivo);
+    cart.aplicarDesconto(valor, cortesia, motivo, autorizador.nome);
     adicionarEvento(
       registrarEvento(
         {
@@ -160,6 +191,10 @@ export function PdvClient() {
       enviadaEm: criadaEm,
       desconto: cart.desconto || undefined,
       cortesia: cart.cortesia || undefined,
+      descontoAutorizadoPor:
+        cart.desconto > 0 && cart.autorizadoPorNome
+          ? usuarios.find((u) => u.nome === cart.autorizadoPorNome)?.id
+          : undefined,
     };
     enviarComandaStore(comanda);
     cart.limpar();
@@ -220,6 +255,55 @@ export function PdvClient() {
     setCancelando(null);
   }
 
+  function cancelarItem(autorizador: Usuario, motivo: string) {
+    if (!cancelandoItem) return;
+    const { comanda, itemIndex } = cancelandoItem;
+    const item = comanda.itens[itemIndex];
+    // Fecha o modal/seleção sempre.
+    setCancelandoItem(null);
+    setMotivoItem(null);
+    setMotivoOutro("");
+    if (!item) return;
+
+    // A store relê o status fresco, decide estorno×perda e diz se ocorreu.
+    const res = cancelarItemComanda({
+      comandaId: comanda.id,
+      itemIndex,
+      autorizadorId: autorizador.id,
+      motivo,
+    });
+    if (!res.ok) return; // no-op (ex.: item já cancelado em outra aba)
+
+    const impacto = item.precoUnit * item.qtd;
+    const produto = PRODUTO_POR_ID.get(item.produtoId);
+    adicionarEvento(
+      registrarEvento(
+        {
+          tipo: "cancelamento",
+          lojaId: lojaAtual,
+          usuarioId: usuario!.id,
+          autorizadoPor: autorizador.id,
+          descricao: `Item "${produto?.nome ?? item.produtoId}" (×${item.qtd}) da comanda #${comanda.numero} cancelado por ${autorizador.nome}: ${motivo}${
+            res.jaPreparado ? " (perda — já preparado)" : " (estorno — não preparado)"
+          }`,
+          valorImpacto: -impacto,
+          refId: comanda.id,
+        },
+        novoId("ev"),
+        agoraISO(),
+      ),
+    );
+    setTicketCancelamento({
+      comanda,
+      itemIndex,
+      autorizadorNome: autorizador.nome,
+      motivo,
+    });
+    toast.success(
+      `Item cancelado · ${res.jaPreparado ? "registrado como perda" : "estoque estornado"}`,
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-4 lg:flex-row">
       {/* Trilho de categorias */}
@@ -248,6 +332,7 @@ export function PdvClient() {
             abertas={abertas}
             onPagar={setPagamentoComanda}
             onCancelar={setCancelando}
+            onCancelarItem={(c, i) => setCancelandoItem({ comanda: c, itemIndex: i })}
             largura="full"
           />
         )}
@@ -263,6 +348,7 @@ export function PdvClient() {
             abertas={abertas}
             onPagar={setPagamentoComanda}
             onCancelar={setCancelando}
+            onCancelarItem={(c, i) => setCancelandoItem({ comanda: c, itemIndex: i })}
             compacto
           />
         )}
@@ -369,6 +455,80 @@ export function PdvClient() {
         descricao="Cancelar uma comanda já enviada só com a gerente ou a Sarah. Fica registrado na auditoria."
         onAutorizado={cancelar}
       />
+
+      {/* Cancelar um item já enviado (com PIN + motivo em botões) */}
+      <PinAutorizacao
+        aberto={!!cancelandoItem}
+        onOpenChange={(o) => {
+          if (!o) {
+            setCancelandoItem(null);
+            setMotivoItem(null);
+            setMotivoOutro("");
+          }
+        }}
+        titulo="Cancelar item"
+        descricao="Cancelar um item já enviado só com a gerente ou a Sarah. Fica registrado na auditoria."
+        exigeMotivoTexto={false}
+        confirmarHabilitado={
+          !!motivoItem && (motivoItem !== "outro" || !!motivoOutro.trim())
+        }
+        onAutorizado={(aut) =>
+          cancelarItem(
+            aut,
+            motivoItem === "outro"
+              ? motivoOutro.trim()
+              : MOTIVO_LABEL[motivoItem!],
+          )
+        }
+      >
+        {cancelandoItem && (
+          <p className="text-sm font-medium text-foreground">
+            {(() => {
+              const it = cancelandoItem.comanda.itens[cancelandoItem.itemIndex];
+              const nome = PRODUTO_POR_ID.get(it.produtoId)?.nome ?? it.produtoId;
+              return `${it.qtd}× ${nome} · comanda #${cancelandoItem.comanda.numero}`;
+            })()}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {MOTIVOS_CANCELAR.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setMotivoItem(m.id)}
+              className={cn(
+                "min-h-11 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                motivoItem === m.id
+                  ? "border-cereja bg-cereja text-white"
+                  : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {motivoItem === "outro" && (
+          <Textarea
+            value={motivoOutro}
+            onChange={(e) => setMotivoOutro(e.target.value)}
+            placeholder="Descreva o motivo"
+            className="min-h-16"
+          />
+        )}
+      </PinAutorizacao>
+
+      {/* Via de CANCELAMENTO para a cozinha */}
+      {ticketCancelamento && (
+        <ImpressaoComanda
+          comanda={ticketCancelamento.comanda}
+          atendenteNome={usuario.nome}
+          via="cancelamento"
+          itemIndex={ticketCancelamento.itemIndex}
+          autorizadorNome={ticketCancelamento.autorizadorNome}
+          motivoCancelamento={ticketCancelamento.motivo}
+          onNova={() => setTicketCancelamento(null)}
+        />
+      )}
     </div>
   );
 }
@@ -377,16 +537,21 @@ function ComandasAbertasSheet({
   abertas,
   onPagar,
   onCancelar,
+  onCancelarItem,
   compacto = false,
   largura,
 }: {
   abertas: Comanda[];
   onPagar: (c: Comanda) => void;
   onCancelar: (c: Comanda) => void;
+  onCancelarItem: (c: Comanda, itemIndex: number) => void;
   compacto?: boolean;
   largura?: "full";
 }) {
   const [open, setOpen] = useState(false);
+  const usuarios = useDadosStore((s) => s.usuarios);
+  const nomeUsuario = (id?: string) =>
+    usuarios.find((u) => u.id === id)?.nome ?? "—";
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
@@ -431,6 +596,51 @@ function ComandasAbertasSheet({
                   {formatBRL(totalComanda(c))}
                 </span>
               </div>
+
+              {/* Itens da comanda — cancelar item a item (com PIN) */}
+              <ul className="mt-2 divide-y divide-border border-t border-border">
+                {c.itens.map((it, idx) => {
+                  const prod = PRODUTO_POR_ID.get(it.produtoId);
+                  return (
+                    <li
+                      key={idx}
+                      className="flex items-center justify-between gap-2 py-1.5"
+                    >
+                      <div className="min-w-0">
+                        <p
+                          className={cn(
+                            "truncate text-sm",
+                            it.cancelado &&
+                              "text-muted-foreground line-through",
+                          )}
+                        >
+                          {it.qtd}× {prod?.nome ?? it.produtoId}
+                        </p>
+                        {it.cancelado && (
+                          <p className="truncate text-[11px] text-alerta">
+                            Cancelado · {nomeUsuario(it.canceladoPor)} ·{" "}
+                            {it.motivoCancelamento}
+                          </p>
+                        )}
+                      </div>
+                      {!it.cancelado && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="shrink-0 text-muted-foreground hover:text-alerta"
+                          onClick={() => {
+                            setOpen(false);
+                            onCancelarItem(c, idx);
+                          }}
+                        >
+                          Cancelar item
+                        </Button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
               <div className="mt-2 flex gap-2">
                 <Button
                   variant="outline"

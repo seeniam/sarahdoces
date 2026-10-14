@@ -64,7 +64,8 @@ export type MotivoPerda =
   | "caiu"
   | "vencido"
   | "consumo_equipe"
-  | "quebrou";
+  | "quebrou"
+  | "cancelado_apos_preparo"; // perda automática ao cancelar item já preparado
 
 export type StatusEncomenda =
   | "orcamento"
@@ -198,6 +199,17 @@ export interface ItemComanda {
   precoOriginal: number;
   adicionais: Adicional[];
   obs?: string;
+  // ---- Cancelamento de item após o envio (M1/M2). Opcional = compatível com
+  // o seed e com comandas antigas (undefined = item ativo). Referenciado por
+  // índice dentro da comanda; não tem id próprio (ver docs/DECISOES.md).
+  cancelado?: boolean;
+  /** Gerente/Dona que autorizou o cancelamento do item. */
+  canceladoPor?: UsuarioId;
+  /** Motivo do cancelamento (label escolhido ou texto livre). */
+  motivoCancelamento?: string;
+  canceladoEm?: ISODate;
+  /** Item já tinha sido preparado quando cancelou (virou perda, não estorno). */
+  canceladoAposPreparo?: boolean;
 }
 
 export interface Comanda {
@@ -217,6 +229,8 @@ export interface Comanda {
   /** Desconto aplicado (R$), se houver (autorizado por gerente). */
   desconto?: number;
   cortesia?: boolean;
+  /** Quem autorizou o desconto/cortesia (para exibir "autorizado por X"). */
+  descontoAutorizadoPor?: UsuarioId;
   motivoCancelamento?: string;
 }
 

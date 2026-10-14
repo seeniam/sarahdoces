@@ -27,6 +27,7 @@ export function PinAutorizacao({
   onAutorizado,
   children,
   confirmarHabilitado = true,
+  exigeMotivoTexto = true,
 }: {
   aberto: boolean;
   onOpenChange: (o: boolean) => void;
@@ -37,6 +38,11 @@ export function PinAutorizacao({
   children?: React.ReactNode;
   /** Condição extra para liberar o botão "Autorizar". */
   confirmarHabilitado?: boolean;
+  /**
+   * Mostra a caixa de texto do motivo (padrão). Quando `false`, o motivo vem
+   * de botões no `children` e o caller o passa já resolvido em `onAutorizado`.
+   */
+  exigeMotivoTexto?: boolean;
 }) {
   const [pin, setPin] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -66,7 +72,8 @@ export function PinAutorizacao({
   }
 
   function confirmar() {
-    if (autorizador && motivo.trim()) {
+    const motivoOk = !exigeMotivoTexto || motivo.trim();
+    if (autorizador && motivoOk && confirmarHabilitado) {
       onAutorizado(autorizador, motivo.trim());
       limpar();
       onOpenChange(false);
@@ -89,12 +96,14 @@ export function PinAutorizacao({
 
         {children}
 
-        <Textarea
-          placeholder="Motivo (obrigatório)"
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          className="min-h-16"
-        />
+        {exigeMotivoTexto && (
+          <Textarea
+            placeholder="Motivo (obrigatório)"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            className="min-h-16"
+          />
+        )}
 
         <div className="flex flex-col items-center gap-3 pt-1">
           <PinPad value={pin} onChange={aoDigitar} erro={erro} />
@@ -115,7 +124,11 @@ export function PinAutorizacao({
 
         <Button
           size="lg"
-          disabled={!autorizador || !motivo.trim() || !confirmarHabilitado}
+          disabled={
+            !autorizador ||
+            (exigeMotivoTexto && !motivo.trim()) ||
+            !confirmarHabilitado
+          }
           onClick={confirmar}
         >
           Autorizar

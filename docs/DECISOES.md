@@ -3,6 +3,42 @@
 Registro curto de escolhas feitas quando algo era ambíguo ou precisava ser
 resolvido (CLAUDE.md: "escolha o mais simples e anote aqui").
 
+## Fase 4 — KDS + cancelar item (decisões do arquiteto)
+
+### D4.1 — Item da comanda é referenciado por índice (sem id próprio)
+`ItemComanda` ganhou campos opcionais de cancelamento (`cancelado`,
+`canceladoPor`, `motivoCancelamento`, `canceladoEm`, `canceladoAposPreparo`),
+mas **não** ganhou `id`. As stores já operam por índice e o seed não gera ids;
+o cancelamento referencia `{comandaId, itemIndex}`. Campos opcionais = seed e
+persistência antigos continuam válidos. `MotivoPerda` ganhou
+`cancelado_apos_preparo`. `persist.version` subiu 2→3 (sem migração destrutiva).
+
+### D4.2 — Estorno × perda decidido pelo status ATUAL da comanda
+Ao cancelar um item: comanda ainda `enviada` (na fila) → **estorna** o estoque;
+`preparando`/`pronta` (já foi para a chapa) → vira **Perda** automática
+(`cancelado_apos_preparo`). A `cancelarItemComanda` relê o status do estado
+fresco (não de um snapshot) para não errar o ramo se o KDS avançar o status
+enquanto o PIN está aberto, e retorna `{ok, jaPreparado}` para o PdvClient só
+gerar EventoAuditoria + ticket quando o cancelamento realmente ocorre. Se o
+último item ativo for cancelado, a comanda inteira vira `cancelada`.
+
+### D4.3 — /cozinha fora do AppShell, com guard próprio
+A rota `/cozinha` já fica fora do grupo `(app)` (tela cheia, sem sidebar). O KDS
+replica o guard do AppShell (useHidratado → sessão → `podeAcessarRota`). Só o
+perfil **cozinha** acessa; cada cozinheiro vê a sua loja (Seu Antônio = Loja 1,
+Dona Lúcia = Loja 2). O destaque/som de "pedido novo" só dispara após a
+hidratação, para não acender todos os cartões ao carregar.
+
+### D4.4 — Sons sintetizados (sem asset) e o toggle
+Som de impressão (pendência 16) e sino de pedido novo do KDS são **sintetizados
+via Web Audio API** (sem mp3 em `public/`). O toggle "Som de impressão" (menu do
+usuário, OFF por padrão) governa o som de impressão do PDV; o sino do KDS toca
+best-effort (recurso central da cozinha), silencioso se o autoplay for bloqueado.
+
+### D4.5 — QR do Pix com selo "Demonstração" (pendência 14)
+Selo diagonal discreto sobre o QR, em cinza (não vermelho — a direção de arte
+evita confundir a marca com erro).
+
 ## Fase 0 — Setup e fundação visual
 
 ### D0.1 — Documentos movidos para `docs/`

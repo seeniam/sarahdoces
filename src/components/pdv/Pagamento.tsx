@@ -103,8 +103,15 @@ export function Pagamento({
         <div className="min-h-44 pt-1">
           {forma === "pix" && (
             <div className="flex flex-col items-center gap-2 py-3">
-              <div className="grid size-40 place-items-center rounded-[14px] border border-border bg-white">
+              <div className="relative grid size-40 place-items-center overflow-hidden rounded-[14px] border border-border bg-white">
                 <QrCode className="size-28 text-[#161616]" strokeWidth={1} />
+                {/* Selo discreto: deixa claro que o QR é da demonstração. */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 -rotate-[18deg] bg-black/[0.04] py-0.5 text-center text-[10px] font-semibold uppercase tracking-[0.25em] text-black/35"
+                >
+                  Demonstração
+                </span>
               </div>
               <p className="text-sm text-muted-foreground">
                 Aponte a câmera para o QR. Pix direto na conta da empresa.

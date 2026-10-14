@@ -3,16 +3,29 @@
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { ChevronDown, LogOut, Moon, RotateCcw, Sun } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  Moon,
+  RotateCcw,
+  Sun,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useDadosStore, useSessaoStore } from "@/lib/store";
+import {
+  useDadosStore,
+  useSessaoStore,
+  usePreferenciasStore,
+} from "@/lib/store";
 import type { Perfil, Usuario } from "@/types";
 
 const ROTULO: Record<Perfil, string> = {
@@ -27,6 +40,8 @@ export function UserMenu({ usuario }: { usuario: Usuario }) {
   const { resolvedTheme, setTheme } = useTheme();
   const sair = useSessaoStore((s) => s.sair);
   const resetarDemo = useDadosStore((s) => s.resetarDemo);
+  const somImpressao = usePreferenciasStore((s) => s.somImpressao);
+  const alternarSom = usePreferenciasStore((s) => s.alternarSomImpressao);
   const escuro = resolvedTheme === "dark";
 
   function trocarUsuario() {
@@ -53,16 +68,33 @@ export function UserMenu({ usuario }: { usuario: Usuario }) {
         <ChevronDown className="size-4 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="flex flex-col">
-          <span className="font-semibold">{usuario.nome}</span>
-          <span className="text-xs font-normal text-muted-foreground">
-            {ROTULO[usuario.perfil]}
-          </span>
-        </DropdownMenuLabel>
+        {/* GroupLabel do Base UI precisa estar dentro de um Group, senão o menu
+            quebra ao abrir (Base UI error #31). */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="flex flex-col">
+            <span className="font-semibold">{usuario.nome}</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {ROTULO[usuario.perfil]}
+            </span>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => setTheme(escuro ? "light" : "dark")}>
           {escuro ? <Sun className="size-4" /> : <Moon className="size-4" />}
           {escuro ? "Tema claro" : "Tema cacau"}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.preventDefault();
+            alternarSom();
+          }}
+        >
+          {somImpressao ? (
+            <Volume2 className="size-4" />
+          ) : (
+            <VolumeX className="size-4" />
+          )}
+          Som de impressão: {somImpressao ? "ligado" : "desligado"}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={resetar}>
           <RotateCcw className="size-4" />

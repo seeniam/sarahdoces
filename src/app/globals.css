@@ -237,6 +237,13 @@
     width: 72mm !important;
     box-shadow: none !important;
   }
+  /* Garante que fundos pretos (faixa de azulejo, cabeçalho de cancelamento,
+     observações invertidas) saiam na impressão. */
+  .ticket-print,
+  .ticket-print * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
 
 @layer utilities {

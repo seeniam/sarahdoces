@@ -20,9 +20,6 @@ o sistema usa os fallbacks da direção de arte (e fica fácil de trocar depois)
 - [ ] Nomes reais das 2 lojas (hoje: "Loja 1 — Centro" e "Loja 2 — Cohama",
       editáveis em `lib/mock/data/lojas.ts` na Fase 1).
 - [ ] Os 10 preços principais do cardápio.
-- [ ] Cancelamento após envio: hoje cancela a **comanda inteira** (com PIN +
-      motivo, registrado na auditoria). Confirmar se precisa cancelar **item a
-      item** de um pedido já na cozinha.
 
 ## Observação
 

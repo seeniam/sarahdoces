@@ -8,6 +8,8 @@ export interface ComandaAtualState {
   desconto: number;
   cortesia: boolean;
   motivoDesconto?: string;
+  /** Nome de quem autorizou o desconto/cortesia (para exibir "autorizado por X"). */
+  autorizadoPorNome?: string;
 
   setTipo: (tipo: TipoComanda) => void;
   setIdentificador: (v: string) => void;
@@ -19,7 +21,12 @@ export interface ComandaAtualState {
     index: number,
     dados: { adicionais?: Adicional[]; obs?: string },
   ) => void;
-  aplicarDesconto: (valor: number, cortesia: boolean, motivo?: string) => void;
+  aplicarDesconto: (
+    valor: number,
+    cortesia: boolean,
+    motivo?: string,
+    autorizadoPorNome?: string,
+  ) => void;
   limpar: () => void;
 }
 
@@ -30,6 +37,7 @@ const INICIAL = {
   desconto: 0,
   cortesia: false,
   motivoDesconto: undefined as string | undefined,
+  autorizadoPorNome: undefined as string | undefined,
 };
 
 function precoComAdicionais(precoOriginal: number, adicionais: Adicional[]) {
@@ -99,8 +107,8 @@ export const useComandaStore = create<ComandaAtualState>()((set) => ({
       return { itens };
     }),
 
-  aplicarDesconto: (valor, cortesia, motivo) =>
-    set({ desconto: valor, cortesia, motivoDesconto: motivo }),
+  aplicarDesconto: (valor, cortesia, motivo, autorizadoPorNome) =>
+    set({ desconto: valor, cortesia, motivoDesconto: motivo, autorizadoPorNome }),
 
   limpar: () => set({ ...INICIAL }),
 }));
