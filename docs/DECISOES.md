@@ -39,6 +39,38 @@ best-effort (recurso central da cozinha), silencioso se o autoplay for bloqueado
 Selo diagonal discreto sobre o QR, em cinza (não vermelho — a direção de arte
 evita confundir a marca com erro).
 
+## Fase 5 — Painel da Dona
+
+### D5.1 — Comparação justa e janelas no fuso de Fortaleza
+As métricas vivem em `lib/domain/painel.ts` (puras, testadas). "Hoje" compara
+com o MESMO dia da semana passada até o mesmo horário decorrido; "7/30 dias"
+comparam com o período imediatamente anterior de mesmo tamanho. Tudo calculado
+no fuso América/Fortaleza. Faturamento = itens ativos − desconto (cancelados
+fora); descontos aparecem como linha própria.
+
+### D5.2 — Lucro estimado e rateio das despesas fixas
+`Lucro estimado = faturamento − CMV − perdas − despesas`, com as despesas fixas
+mensais rateadas por dia (mensal/30 × dias do período) e metade para cada loja
+quando a despesa não tem loja. Rotulado "estimado" + sheet "Como calculamos".
+
+### D5.3 — Volume do seed calibrado para um negócio saudável
+A base de comandas/dia subiu para 56 (Centro) / 46 (Cohama) para que o
+faturamento supere com folga as despesas fixas (R$ 21.700/mês) e o painel mostre
+um lucro plausível — antes o volume era baixo demais e o "lucro estimado" saía
+negativo. As compras do seed escalam com o consumo, então o estoque continua
+saudável. Determinismo preservado (contagem por índice/dia estável).
+
+### D5.4 — Ao vivo entre abas
+O painel recalcula tudo a partir do `useDadosStore` (sincronizado entre abas por
+`sync.ts`). Uma venda paga noutra aba aparece sem recarregar; um efeito observa o
+último pagamento e mostra o aviso "Nova venda · … · R$ …" (só para vendas novas,
+nunca na carga inicial). O número-herói faz uma transição curta ao mudar.
+
+### D5.5 — Estados
+Antes das 6h30 (Fortaleza), "hoje" mostra um estado próprio ("A loja ainda não
+abriu. Ontem: R$ X") em vez de gráficos zerados. A hidratação é coberta pelo
+skeleton do AppShell.
+
 ## Fase 0 — Setup e fundação visual
 
 ### D0.1 — Documentos movidos para `docs/`

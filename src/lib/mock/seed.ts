@@ -186,7 +186,8 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
     const hoje = offset === DIAS - 1;
 
     for (const loja of LOJAS) {
-      const base = loja.id === "loja-1" ? 24 : 20;
+      // Volume de um café movimentado (Centro um pouco mais que Cohama).
+      const base = loja.id === "loja-1" ? 56 : 46;
       const qtd = Math.round(base * (fds ? 1.1 : 1) * rng.range(0.85, 1.15));
       const atendentes = ATENDENTES_LOJA[loja.id];
 
@@ -629,21 +630,23 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
   }
 
   // ---- Despesas fixas do mês ----
-  const despesasFixas: [string, Despesa["categoria"], number, number][] = [
-    ["Aluguel Loja 1", "aluguel", 4500, 5],
-    ["Aluguel Loja 2", "aluguel", 3800, 5],
+  // [descrição, categoria, valor, dia de vencimento, loja (aluguel é por loja)]
+  const despesasFixas: [string, Despesa["categoria"], number, number, LojaId?][] = [
+    ["Aluguel Loja 1", "aluguel", 4500, 5, "loja-1"],
+    ["Aluguel Loja 2", "aluguel", 3800, 5, "loja-2"],
     ["Energia elétrica", "energia", 2200, 10],
     ["Água", "agua", 480, 12],
     ["Gás", "gas", 620, 8],
     ["Internet", "internet", 300, 15],
     ["Folha de pagamento", "salarios", 9800, 5],
   ];
-  despesasFixas.forEach(([descricao, categoria, valor, diaVenc], i) => {
+  despesasFixas.forEach(([descricao, categoria, valor, diaVenc, lojaId], i) => {
     despesas.push({
       id: `desp-${(i + 1).toString().padStart(3, "0")}`,
       descricao,
       categoria,
       valor,
+      ...(lojaId ? { lojaId } : {}),
       vencimento: new Date(
         `${rel.ano}-${pad(rel.mes)}-${pad(diaVenc)}T00:00:00${TZ_OFFSET}`,
       ).toISOString(),

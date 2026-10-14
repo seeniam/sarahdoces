@@ -4,3 +4,4 @@ export * from "./rendimento";
 export * from "./financeiro";
 export * from "./auditoria";
 export * from "./perdas";
+export * from "./painel";
