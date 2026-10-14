@@ -353,3 +353,45 @@ gerente/dona (reusa `PinAutorizacao`); suprimento não.
 - Menores: "Pago no mês" conta só pagamentos do mês corrente; DRE do Faturamento
   mostra "Pix" (não o id cru); filtro de tipo da URL validado; quebra do fluxo em
   cartões no 390; keys estáveis no detalhe da DRE.
+
+## Fase 8 — Comandas, Encomendas, Equipe, Cardápio e Configurações
+
+### D8.1 — Encomenda com itens livres e entrega vira receita
+`ItemEncomenda` aceita item do cardápio (`produtoId`) OU item livre
+(`nomeLivre` + `valorUnit`) para bolos sob medida. Ao entregar, o saldo
+(total − sinal) vira um `Pagamento` (receita no fluxo de caixa), com a forma
+informada; o `comandaId` do pagamento aponta para a encomenda (não é comanda
+do PDV). A DRE continua focada nas vendas do PDV; a receita de encomenda
+aparece no fluxo de caixa.
+
+### D8.2 — Alterar preço é ação sensível com PIN e antes→depois
+`EventoAuditoria` ganhou `antes`/`depois`. `alterarPrecoProduto` exige PIN de
+gerente/dona (reusa `PinAutorizacao`), mostra o impacto na margem antes de
+confirmar e gera `preco_alterado` com o preço antigo → novo. O atendente não
+acessa `/cardapio` (guarda de rota), então não vê o botão de preço.
+
+### D8.3 — Reimpressão e mudanças de equipe entram na auditoria
+Reimprimir uma comanda gera `reimpressao`. Criar/editar/desativar usuário gera
+o novo tipo `equipe`. Desativar não apaga (preserva o histórico). `/equipe`
+passou a ser Dona + Gerente.
+
+### D8.4 — Novo produto sem ficha
+Produtos criados na demo não têm ficha técnica: o custo (CMV) é informado na
+criação (senão 0). O preço de produtos existentes só muda pelo fluxo sensível.
+
+### D8.5 — Configurações guardam preferências do aparelho
+Via da cozinha, formas aceitas, som e tema ficam em `preferencias` (por
+navegador). Nome/endereço das lojas são editáveis e persistem no banco mock.
+"Resetar demonstração" volta ao seed de hoje; "Sobre" explica o que é mock.
+
+### D8.6 — Correções da revisão adversarial da Fase 8
+- **Reimpressão audita quem reimprimiu** (usuário logado), não o atendente
+  original da comanda.
+- **WhatsApp do seed**: número tinha 1 dígito a menos (quebrava todo wa.me);
+  corrigido para 11 dígitos. `linkWhatsApp` passou a normalizar por tamanho
+  (não confunde o DDD 55 com o código do país).
+- **PIN de ação sensível** valida contra a equipe ATUAL (a /equipe edita PINs)
+  e só aceita conta ativa — não mais o `USUARIOS` estático.
+- **Config**: os campos das lojas re-sincronizam após "Resetar demonstração".
+- **Encomenda entregue** não é mais editável (evitava divergir da receita já
+  lançada).

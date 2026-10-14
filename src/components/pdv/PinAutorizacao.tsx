@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PinPad } from "@/components/auth/PinPad";
-import { USUARIOS } from "@/lib/mock/data";
+import { useDadosStore } from "@/lib/store";
 import { podeAutorizar } from "@/lib/domain";
 import type { Usuario } from "@/types";
 
@@ -47,16 +47,18 @@ export function PinAutorizacao({
   const [pin, setPin] = useState("");
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState(false);
+  // Valida contra a equipe ATUAL (a /equipe pode ter editado PINs/usuários) e
+  // só aceita conta ativa.
+  const usuarios = useDadosStore((s) => s.usuarios);
+  const resolver = (v: string) =>
+    usuarios.find((u) => u.pin === v && u.ativo && podeAutorizar(u.perfil)) ?? null;
 
-  const autorizador =
-    pin.length === 4
-      ? (USUARIOS.find((u) => u.pin === pin && podeAutorizar(u.perfil)) ?? null)
-      : null;
+  const autorizador = pin.length === 4 ? resolver(pin) : null;
 
   function aoDigitar(v: string) {
     setPin(v);
     setErro(false);
-    if (v.length === 4 && !USUARIOS.find((u) => u.pin === v && podeAutorizar(u.perfil))) {
+    if (v.length === 4 && !resolver(v)) {
       setErro(true);
       setTimeout(() => {
         setErro(false);

@@ -1,13 +1,7 @@
-import { Placeholder } from "@/components/shared/Placeholder";
+import { ComandasClient } from "@/components/comandas/ComandasClient";
 
 export const metadata = { title: "Comandas" };
 
 export default function Page() {
-  return (
-    <Placeholder
-      titulo="Comandas"
-      descricao="Histórico com filtros e a linha do tempo de cada pedido: criada, enviada, pronta, paga."
-      fase="Fase 8"
-    />
-  );
+  return <ComandasClient />;
 }

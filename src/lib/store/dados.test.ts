@@ -106,3 +106,62 @@ describe("cancelarItemComanda", () => {
     expect(useDadosStore.getState().comandas[0].itens[0].cancelado).toBeFalsy();
   });
 });
+
+describe("alterarPrecoProduto (Fase 8)", () => {
+  it("altera o preço e cria evento com antes → depois", () => {
+    useDadosStore.setState({
+      produtos: [
+        { id: "prod-cafe", nome: "Café", categoriaId: "cat-bebidas", preco: 3, custo: 0.5, ativo: true, foto: null, adicionais: [] },
+      ],
+      eventos: [],
+    });
+    useDadosStore.getState().alterarPrecoProduto({
+      produtoId: "prod-cafe",
+      novoPreco: 3.5,
+      autorizadorId: "u-marta",
+    });
+    const s = useDadosStore.getState();
+    expect(s.produtos.find((p) => p.id === "prod-cafe")!.preco).toBe(3.5);
+    const ev = s.eventos.find((e) => e.tipo === "preco_alterado");
+    expect(ev).toBeDefined();
+    expect(ev!.antes).toContain("3,00");
+    expect(ev!.depois).toContain("3,50");
+    expect(ev!.autorizadoPor).toBe("u-marta");
+  });
+
+  it("não faz nada quando o preço não muda", () => {
+    useDadosStore.setState({
+      produtos: [
+        { id: "prod-cafe", nome: "Café", categoriaId: "cat-bebidas", preco: 3, custo: 0.5, ativo: true, foto: null, adicionais: [] },
+      ],
+      eventos: [],
+    });
+    useDadosStore.getState().alterarPrecoProduto({ produtoId: "prod-cafe", novoPreco: 3, autorizadorId: "u-marta" });
+    expect(useDadosStore.getState().eventos.length).toBe(0);
+  });
+});
+
+describe("entregarEncomenda (Fase 8)", () => {
+  it("marca entregue e lança o saldo como pagamento (receita)", () => {
+    useDadosStore.setState({
+      encomendas: [
+        {
+          id: "enc-x", cliente: "Vânia", whatsapp: "(98) 90000-0000",
+          itens: [{ nomeLivre: "Bolo", valorUnit: 200, qtd: 1 }],
+          dataEntrega: "2026-10-14T15:00:00.000Z", sinal: 100, total: 200,
+          status: "pronta", lojaId: "loja-1",
+        },
+      ],
+      pagamentos: [],
+    });
+    useDadosStore.getState().entregarEncomenda({ id: "enc-x", forma: "pix" });
+    const s = useDadosStore.getState();
+    const enc = s.encomendas.find((e) => e.id === "enc-x")!;
+    expect(enc.status).toBe("entregue");
+    expect(enc.formaPagamentoSaldo).toBe("pix");
+    const pag = s.pagamentos.find((p) => p.comandaId === "enc-x");
+    expect(pag).toBeDefined();
+    expect(pag!.valor).toBe(100); // saldo = total − sinal
+    expect(pag!.forma).toBe("pix");
+  });
+});

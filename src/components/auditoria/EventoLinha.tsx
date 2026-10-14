@@ -11,6 +11,7 @@ import {
   Wallet,
   ArrowLeftRight,
   ArrowDownCircle,
+  Users,
 } from "lucide-react";
 import { cn } from "cn";
 import { ROTULO_TIPO_EVENTO, COR_SEVERIDADE } from "./rotulos";
@@ -28,6 +29,7 @@ const ICONE: Record<TipoEvento, typeof Ban> = {
   perda: TriangleAlert,
   transferencia: ArrowLeftRight,
   sangria: ArrowDownCircle,
+  equipe: Users,
 };
 
 export function EventoLinha({

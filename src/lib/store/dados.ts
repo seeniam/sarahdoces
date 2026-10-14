@@ -6,14 +6,18 @@ import type {
   Compra,
   Contagem,
   Despesa,
+  Encomenda,
   EventoAuditoria,
+  FormaPagamento,
   ItemContagem,
   LojaId,
   Pagamento,
   Perda,
+  Produto,
   SessaoCaixa,
   StatusComanda,
   Transferencia,
+  Usuario,
   UsuarioId,
   ValoresPorForma,
 } from "@/types";
@@ -31,7 +35,7 @@ import {
   ROTULO_FORMA,
   type FechamentoPorForma,
 } from "@/lib/domain/financeiro";
-import { formatBRLSinalado } from "@/lib/format";
+import { formatBRL, formatBRLSinalado } from "@/lib/format";
 import {
   CATEGORIAS,
   FICHAS,
@@ -129,6 +133,36 @@ export type DadosState = BancoMock & {
   marcarDespesaPaga: (despesaId: string) => void;
   /** Acrescenta uma despesa (conta a pagar). */
   adicionarDespesa: (despesa: Despesa) => void;
+
+  // ---- Comandas / Encomendas / Equipe / Cardápio / Config (Fase 8) ----
+  /** Registra uma reimpressão de comanda (vetor de fraude → auditoria). */
+  registrarReimpressao: (args: {
+    comandaId: string;
+    usuarioId: UsuarioId;
+    via: "cliente" | "cozinha";
+  }) => void;
+  /** Cria ou atualiza uma encomenda (por id). */
+  salvarEncomenda: (encomenda: Encomenda) => void;
+  /** Avança a encomenda para o próximo status. */
+  avancarStatusEncomenda: (id: string) => void;
+  /** Marca a encomenda como entregue: vira receita (pagamento do saldo). */
+  entregarEncomenda: (args: { id: string; forma: FormaPagamento }) => void;
+  /** Cria ou atualiza um usuário; gera evento de auditoria. */
+  salvarUsuario: (usuario: Usuario, autorId: UsuarioId) => void;
+  /** Desativa um usuário (preserva histórico); gera evento. */
+  desativarUsuario: (usuarioId: UsuarioId, autorId: UsuarioId) => void;
+  /** Altera o preço de um produto (sensível): evento com antigo → novo. */
+  alterarPrecoProduto: (args: {
+    produtoId: string;
+    novoPreco: number;
+    autorizadorId: UsuarioId;
+  }) => void;
+  /** Ativa/desativa um produto (reflete no PDV na hora). */
+  alternarProdutoAtivo: (produtoId: string) => void;
+  /** Cria ou atualiza um produto (sem mexer no preço de existentes). */
+  salvarProduto: (produto: Produto) => void;
+  /** Edita nome/endereço de uma loja. */
+  editarLoja: (args: { lojaId: LojaId; nome: string; endereco: string }) => void;
 };
 
 // Estado inicial LEVE: dados estáticos + coleções geradas vazias. O seed pesado
@@ -601,13 +635,181 @@ export const useDadosStore = create<DadosState>()(
 
       adicionarDespesa: (despesa) =>
         set((s) => ({ despesas: [...s.despesas, despesa] })),
+
+      registrarReimpressao: ({ comandaId, usuarioId, via }) =>
+        set((s) => {
+          const comanda = s.comandas.find((c) => c.id === comandaId);
+          const evento = registrarEvento(
+            {
+              tipo: "reimpressao",
+              lojaId: comanda?.lojaId ?? s.lojas[0].id,
+              usuarioId,
+              descricao: `Reimpressão da via ${via === "cozinha" ? "da cozinha" : "do cliente"}${comanda ? ` · comanda #${comanda.numero}` : ""}`,
+              severidade: "info",
+              refId: comandaId,
+            },
+            novoId("ev"),
+            agoraISO(),
+          );
+          return { eventos: [...s.eventos, evento] };
+        }),
+
+      salvarEncomenda: (encomenda) =>
+        set((s) => {
+          const existe = s.encomendas.some((e) => e.id === encomenda.id);
+          return {
+            encomendas: existe
+              ? s.encomendas.map((e) => (e.id === encomenda.id ? encomenda : e))
+              : [...s.encomendas, encomenda],
+          };
+        }),
+
+      avancarStatusEncomenda: (id) =>
+        set((s) => {
+          const ordem: Encomenda["status"][] = [
+            "orcamento", "confirmada", "em_producao", "pronta", "entregue",
+          ];
+          return {
+            encomendas: s.encomendas.map((e) => {
+              if (e.id !== id) return e;
+              const i = ordem.indexOf(e.status);
+              const proximo = ordem[Math.min(ordem.length - 1, i + 1)];
+              return { ...e, status: proximo };
+            }),
+          };
+        }),
+
+      entregarEncomenda: ({ id, forma }) =>
+        set((s) => {
+          const enc = s.encomendas.find((e) => e.id === id);
+          if (!enc || enc.status === "entregue") return {};
+          const data = agoraISO();
+          const saldo = Number((enc.total - enc.sinal).toFixed(2));
+          const encomendas = s.encomendas.map((e) =>
+            e.id !== id
+              ? e
+              : { ...e, status: "entregue" as const, entregueEm: data, formaPagamentoSaldo: forma },
+          );
+          // Saldo vira receita no fluxo de caixa (pagamento ligado à encomenda).
+          const pagamentos =
+            saldo > 0
+              ? [
+                  ...s.pagamentos,
+                  {
+                    id: novoId("pag"),
+                    comandaId: enc.id, // referência à encomenda (não é comanda do PDV)
+                    lojaId: enc.lojaId,
+                    forma,
+                    valor: saldo,
+                    data,
+                  },
+                ]
+              : s.pagamentos;
+          return { encomendas, pagamentos };
+        }),
+
+      salvarUsuario: (usuario, autorId) =>
+        set((s) => {
+          const existe = s.usuarios.some((u) => u.id === usuario.id);
+          const evento = registrarEvento(
+            {
+              tipo: "equipe",
+              lojaId: usuario.lojaId ?? s.lojas[0].id,
+              usuarioId: autorId,
+              descricao: `${existe ? "Editou" : "Cadastrou"} ${usuario.nome} (${usuario.perfil})`,
+              severidade: "atencao",
+              refId: usuario.id,
+            },
+            novoId("ev"),
+            agoraISO(),
+          );
+          return {
+            usuarios: existe
+              ? s.usuarios.map((u) => (u.id === usuario.id ? usuario : u))
+              : [...s.usuarios, usuario],
+            eventos: [...s.eventos, evento],
+          };
+        }),
+
+      desativarUsuario: (usuarioId, autorId) =>
+        set((s) => {
+          const alvo = s.usuarios.find((u) => u.id === usuarioId);
+          if (!alvo) return {};
+          const evento = registrarEvento(
+            {
+              tipo: "equipe",
+              lojaId: alvo.lojaId ?? s.lojas[0].id,
+              usuarioId: autorId,
+              descricao: `Desativou ${alvo.nome} (${alvo.perfil})`,
+              severidade: "atencao",
+              refId: usuarioId,
+            },
+            novoId("ev"),
+            agoraISO(),
+          );
+          return {
+            usuarios: s.usuarios.map((u) =>
+              u.id === usuarioId ? { ...u, ativo: false } : u,
+            ),
+            eventos: [...s.eventos, evento],
+          };
+        }),
+
+      alterarPrecoProduto: ({ produtoId, novoPreco, autorizadorId }) =>
+        set((s) => {
+          const produto = s.produtos.find((p) => p.id === produtoId);
+          if (!produto || novoPreco === produto.preco) return {};
+          const evento = registrarEvento(
+            {
+              tipo: "preco_alterado",
+              lojaId: s.lojas[0].id,
+              usuarioId: autorizadorId,
+              autorizadoPor: autorizadorId,
+              descricao: `Preço de ${produto.nome}: ${formatBRL(produto.preco)} → ${formatBRL(novoPreco)}`,
+              valorImpacto: Number((novoPreco - produto.preco).toFixed(2)),
+              antes: formatBRL(produto.preco),
+              depois: formatBRL(novoPreco),
+              refId: produtoId,
+            },
+            novoId("ev"),
+            agoraISO(),
+          );
+          return {
+            produtos: s.produtos.map((p) =>
+              p.id === produtoId ? { ...p, preco: novoPreco } : p,
+            ),
+            eventos: [...s.eventos, evento],
+          };
+        }),
+
+      alternarProdutoAtivo: (produtoId) =>
+        set((s) => ({
+          produtos: s.produtos.map((p) =>
+            p.id === produtoId ? { ...p, ativo: !p.ativo } : p,
+          ),
+        })),
+
+      salvarProduto: (produto) =>
+        set((s) => {
+          const existe = s.produtos.some((p) => p.id === produto.id);
+          return {
+            produtos: existe
+              ? s.produtos.map((p) => (p.id === produto.id ? produto : p))
+              : [...s.produtos, produto],
+          };
+        }),
+
+      editarLoja: ({ lojaId, nome, endereco }) =>
+        set((s) => ({
+          lojas: s.lojas.map((l) => (l.id === lojaId ? { ...l, nome, endereco } : l)),
+        })),
     }),
     {
       name: "cereja-dados",
       // v5 (Fase 7): sessões de caixa com fechamento por forma + despesas
       // avulsas no seed; ações de fechar caixa/sangria/suprimento/despesa.
       // Subir a versão descarta o cache v4 e o useHidratado regenera o seed.
-      version: 6,
+      version: 8,
       storage: createJSONStorage(() => storage),
       partialize: (s) => ({
         dataAncora: s.dataAncora,

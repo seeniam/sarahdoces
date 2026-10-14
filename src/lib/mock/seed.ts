@@ -41,7 +41,7 @@ const TZ_OFFSET = "-03:00";
 const DIAS = 30;
 const SEED = 42;
 /** Bump invalida o cache persistido (força re-seed). */
-export const VERSAO_SEED = 5;
+export const VERSAO_SEED = 7;
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /** Data de hoje (YYYY-MM-DD) no fuso de São Luís. */
@@ -748,32 +748,55 @@ export function gerarSeed(agora: Date = new Date()): BancoMock {
   });
 
   // ---- Encomendas (confeitaria) ----
-  const statusEnc: Encomenda["status"][] = [
-    "orcamento", "confirmada", "em_producao", "pronta", "entregue",
+  // [cliente, status, Δdias da entrega (hoje=0), hora, bolo livre?, total, obs?]
+  const planoEnc: [
+    string, Encomenda["status"], number, number, string | null, number, string?,
+  ][] = [
+    ["Dona Fátima", "orcamento", 5, 15, "Bolo 2 andares — chocolate com morango", 320, "Topo 'Parabéns Fátima'"],
+    ["Escritório Alfa", "orcamento", 3, 10, null, 180],
+    ["Léo (aniversário)", "confirmada", 2, 16, "Bolo redondo — brigadeiro (15 fatias)", 160, "Sem lactose"],
+    ["Vânia", "confirmada", 4, 9, null, 120],
+    ["Cléo", "em_producao", 1, 14, "Bolo vulcão — doce de leite", 140],
+    ["Marina", "em_producao", 0, 17, null, 90, "Retirar no fim da tarde"],
+    ["Seu Jorge", "pronta", 0, 11, "Bolo de pote sortido (20)", 240],
+    ["Padaria Cohama", "pronta", -1, 12, null, 200, "ATRASADA — cliente avisado"],
+    ["Rafaela", "entregue", -2, 15, "Bolo de aniversário — chantilly", 180],
+    ["Tia Zu", "entregue", -4, 10, null, 110],
   ];
-  const clientesEnc = ["Dona Fátima", "Léo (aniversário)", "Escritório Alfa", "Vânia", "Cléo"];
-  clientesEnc.forEach((cliente, i) => {
-    const offsetEntrega = i - 1; // alguns futuros, alguns passados
+  const whatsFixo = [
+    "98991", "98992", "98988", "98977", "98961",
+    "98954", "98943", "98936", "98925", "98918",
+  ];
+  planoEnc.forEach(([cliente, status, dDias, hora, boloLivre, total, obs], i) => {
     const cal = new Date(ancoraUTC);
-    cal.setUTCDate(cal.getUTCDate() + offsetEntrega * 2);
+    cal.setUTCDate(cal.getUTCDate() + dDias);
     const dataEntrega = new Date(
-      `${cal.getUTCFullYear()}-${pad(cal.getUTCMonth() + 1)}-${pad(cal.getUTCDate())}T15:00:00${TZ_OFFSET}`,
+      `${cal.getUTCFullYear()}-${pad(cal.getUTCMonth() + 1)}-${pad(cal.getUTCDate())}T${pad(hora)}:00:00${TZ_OFFSET}`,
     ).toISOString();
-    const total = rng.pick([80, 120, 150, 90, 200]);
+    const itens = boloLivre
+      ? [{ nomeLivre: boloLivre, valorUnit: total, qtd: 1 }]
+      : [
+          { produtoId: "prod-bolo-pote", qtd: rng.int(6, 20) },
+          ...(rng.chance(0.5) ? [{ produtoId: "prod-brigadeiro", qtd: rng.int(20, 50) }] : []),
+        ];
+    const entregue = status === "entregue";
     encomendas.push({
       id: `enc-${(i + 1).toString().padStart(3, "0")}`,
       cliente,
-      whatsapp: `(98) 9${rng.int(8000, 9999)}-${rng.int(1000, 9999)}`,
-      itens: [
-        { produtoId: "prod-bolo-pote", qtd: rng.int(6, 20) },
-        ...(rng.chance(0.5) ? [{ produtoId: "prod-brigadeiro", qtd: rng.int(20, 50) }] : []),
-      ],
+      whatsapp: `(98) 9${whatsFixo[i].slice(1)}-${rng.int(1000, 9999)}`,
+      itens,
       dataEntrega,
       sinal: Number((total * 0.5).toFixed(2)),
       total,
-      status: statusEnc[i % statusEnc.length],
+      status,
       lojaId: i % 2 === 0 ? "loja-1" : "loja-2",
-      obs: rng.chance(0.4) ? "Sem lactose" : undefined,
+      obs,
+      ...(entregue
+        ? {
+            entregueEm: dataEntrega,
+            formaPagamentoSaldo: rng.pick(["pix", "dinheiro", "debito"] as const),
+          }
+        : {}),
     });
   });
 

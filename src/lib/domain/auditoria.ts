@@ -38,6 +38,7 @@ const SEVERIDADE_PADRAO: Record<TipoEvento, Severidade> = {
   perda: "info",
   transferencia: "info",
   sangria: "info",
+  equipe: "atencao",
 };
 
 export interface NovoEvento {
@@ -49,6 +50,8 @@ export interface NovoEvento {
   autorizadoPor?: UsuarioId;
   valorImpacto?: number;
   refId?: string;
+  antes?: string;
+  depois?: string;
 }
 
 /**
@@ -71,6 +74,8 @@ export function registrarEvento(
     autorizadoPor: dados.autorizadoPor,
     valorImpacto: dados.valorImpacto,
     refId: dados.refId,
+    antes: dados.antes,
+    depois: dados.depois,
   };
 }
 

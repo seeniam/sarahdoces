@@ -54,6 +54,12 @@ export function EventoDetalhe({
               {evento.autorizadoPor && (
                 <Linha rotulo="Autorizado por" valor={nomeUsuario(evento.autorizadoPor)} />
               )}
+              {evento.antes && evento.depois && (
+                <div className="flex items-center justify-between gap-3 border-b border-border py-2.5">
+                  <span className="text-sm text-muted-foreground">Antes → depois</span>
+                  <AntesDepois antes={evento.antes} depois={evento.depois} />
+                </div>
+              )}
               {evento.valorImpacto != null && evento.valorImpacto !== 0 && (
                 <Linha
                   rotulo="Valor impactado"

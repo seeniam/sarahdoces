@@ -39,7 +39,7 @@ export const NAV: ItemNav[] = [
   { href: "/financeiro", label: "Financeiro", icone: Wallet, perfis: ["dona", "gerente"], secao: "gestao" },
   { href: "/auditoria", label: "Auditoria", icone: Eye, perfis: ["dona", "gerente"], secao: "gestao" },
   { href: "/cardapio", label: "Cardápio", icone: UtensilsCrossed, perfis: ["dona", "gerente"], secao: "admin" },
-  { href: "/equipe", label: "Equipe", icone: Users, perfis: ["dona"], secao: "admin" },
+  { href: "/equipe", label: "Equipe", icone: Users, perfis: ["dona", "gerente"], secao: "admin" },
   { href: "/configuracoes", label: "Configurações", icone: Settings, perfis: ["dona", "gerente"], secao: "admin" },
 ];
 

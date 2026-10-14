@@ -86,7 +86,8 @@ export type TipoEvento =
   | "preco_alterado"
   | "perda"
   | "transferencia"
-  | "sangria";
+  | "sangria"
+  | "equipe";
 
 export type Fornecedor =
   | "Mateus"
@@ -406,7 +407,12 @@ export interface Despesa {
 }
 
 export interface ItemEncomenda {
-  produtoId: ProdutoId;
+  /** Produto do cardápio; ausente quando é um item livre (bolo sob medida). */
+  produtoId?: ProdutoId;
+  /** Nome do item livre (ex.: "Bolo 2 andares chocolate"). */
+  nomeLivre?: string;
+  /** Preço unitário do item livre (produtos usam o preço do cardápio). */
+  valorUnit?: number;
   qtd: number;
   obs?: string;
 }
@@ -422,6 +428,9 @@ export interface Encomenda {
   status: StatusEncomenda;
   lojaId: LojaId;
   obs?: string;
+  /** Forma de pagamento do saldo, informada na entrega. */
+  formaPagamentoSaldo?: FormaPagamento;
+  entregueEm?: ISODate;
 }
 
 export interface EventoAuditoria {
@@ -436,6 +445,9 @@ export interface EventoAuditoria {
   severidade: Severidade;
   /** Referência à entidade de origem (comanda, contagem…). */
   refId?: Id;
+  /** Valor anterior → novo (ex.: alteração de preço). Texto já formatado. */
+  antes?: string;
+  depois?: string;
 }
 
 // ----------------------------------------------------------------------------

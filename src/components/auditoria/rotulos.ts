@@ -11,6 +11,7 @@ export const ROTULO_TIPO_EVENTO: Record<TipoEvento, string> = {
   perda: "Perda",
   transferencia: "Transferência",
   sangria: "Sangria",
+  equipe: "Equipe",
 };
 
 export const ROTULO_SEVERIDADE: Record<Severidade, string> = {
