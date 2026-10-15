@@ -435,3 +435,9 @@ Recharts. Mitigações aplicadas: gráficos Recharts carregados sob demanda
 (`next/dynamic`, sem bloquear a hidratação). Chegar a ≥90 no painel exigiria
 mover o seed para um web worker ou embarcar um dataset pré-gerado — decisão
 arquitetural deliberada, desproporcional para um protótipo de apresentação.
+
+**Status (Fase 10): limitação aceita — aval do arquiteto.** Mantém-se o protótipo
+frontend-only; o seed NÃO será movido para web worker nesta entrega. A landing
+(página pública) cumpre o gate (99 desktop); o painel fica com acessibilidade 100
+e boas práticas 100, e a performance é a esperada para um dashboard client-side
+com dados mockados.

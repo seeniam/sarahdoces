@@ -41,7 +41,7 @@ const TZ_OFFSET = "-03:00";
 const DIAS = 30;
 const SEED = 42;
 /** Bump invalida o cache persistido (força re-seed). */
-export const VERSAO_SEED = 8;
+export const VERSAO_SEED = 9;
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /** Data de hoje (YYYY-MM-DD) no fuso de São Luís. */

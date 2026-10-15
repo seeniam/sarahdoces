@@ -4,7 +4,7 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://sarah-rangel-doces.vercel.app"),
+  metadataBase: new URL("https://sarahdoces.vercel.app"),
   title: {
     default: "Sarah Rangel · Gestão",
     template: "%s · Sarah Rangel",

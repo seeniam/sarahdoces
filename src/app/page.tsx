@@ -84,6 +84,7 @@ export default function Home() {
                 <Button
                   size="lg"
                   className="h-12 px-7 text-base"
+                  nativeButton={false}
                   render={<Link href="/login" />}
                 >
                   Entrar na demonstração
@@ -186,6 +187,7 @@ export default function Home() {
             <Button
               size="lg"
               className="h-12 px-7 text-base"
+              nativeButton={false}
               render={<Link href="/login" />}
             >
               Entrar na demonstração

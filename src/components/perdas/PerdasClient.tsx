@@ -393,6 +393,7 @@ function ParaOndeFoi({
             <Button
               variant="outline"
               size="sm"
+              nativeButton={false}
               render={<Link href="/estoque" />}
               className="shrink-0 border-alerta/30 text-alerta hover:bg-alerta/10"
             >

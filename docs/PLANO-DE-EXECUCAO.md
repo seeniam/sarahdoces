@@ -8,10 +8,10 @@ Cole **um prompt por vez** no **Claude Code** (o executor do projeto). Só avanc
 
 ## Antes de começar (tarefa do Neemias)
 
-1. **Logo em alta**: baixar do Instagram/Linktree (ou pedir à Glenda) → `public/brand/logo.png` (de preferência PNG transparente). Se só houver JPG, tudo bem, o Claude Code recorta/ajusta.
+1. **Logo em alta**: baixar do Instagram/Linktree (ou pedir à cliente) → `public/brand/logo.png` (de preferência PNG transparente). Se só houver JPG, tudo bem, o Claude Code recorta/ajusta.
 2. **Fotos reais dos produtos**: 15 a 25 fotos do Instagram da @sarahdoces (café, cuscuz, PF, porções, sucos, bolos, doces, vitrine, fachada/salão) → `public/images/produtos/` com nomes em slug (`cuscuz-completo.jpg`, `bolo-de-pote.jpg`…). **Esse é o maior diferencial da demo**: ela vai ver a comida dela no sistema. Como a demo é só para ela, o uso é de apresentação. Se possível, avise-a ou peça autorização informalmente.
 3. **Foto-herói** para login/landing (salão, balcão ou mesa bonita) → `public/images/hero.jpg`.
-4. Confirmar com a Glenda: nomes reais das 2 lojas e 10 preços principais.
+4. Confirmar com a cliente: nomes reais das 2 lojas e 10 preços principais.
 
 Se algum item faltar, o Claude Code usa o fallback da direção de arte (Unsplash/Pexels baixado, com créditos) e deixa a lista do que falta em `docs/PENDENCIAS-CLIENTE.md`.
 

@@ -210,12 +210,22 @@
    pouco menos forte (branco 88%), nunca o cinza/cacau de fundo claro. Os fundos
    coloridos são escurecidos o bastante para a descrição passar em AA (≥4,5:1).
    Ícone e borda seguem o mesmo primeiro plano — o toast lê como uma peça só. */
-[data-sonner-toast] [data-description] {
-  /* Padrão (toast neutro): texto do popover um pouco mais suave, mas legível. */
-  color: var(--toast-desc, color-mix(in srgb, var(--normal-text) 82%, transparent));
+/* O sonner injeta, em runtime, uma regra de MESMA especificidade para a
+   descrição (que deixava a cor em #3f3f3f — cinza escuro — sobre o fundo
+   colorido). Aplicamos com especificidade MAIOR ([data-type]) + !important para
+   vencer sempre, independente da ordem de carregamento. */
+[data-sonner-toast][data-type] [data-description] {
+  color: var(
+    --toast-desc,
+    color-mix(in srgb, var(--normal-text) 82%, transparent)
+  ) !important;
 }
-[data-sonner-toast] [data-icon] {
-  color: var(--normal-text);
+[data-sonner-toast][data-type] [data-icon] {
+  color: var(--normal-text) !important;
+}
+/* Toast neutro (sem variante colorida): descrição suave, mas legível. */
+[data-sonner-toast] [data-description] {
+  color: color-mix(in srgb, var(--normal-text) 82%, transparent);
 }
 /* Fundos coloridos FIXOS (não seguem o tema): no modo escuro os tokens de marca
    clareiam e o branco perderia o AA. Estes hexes são os da marca escurecidos o

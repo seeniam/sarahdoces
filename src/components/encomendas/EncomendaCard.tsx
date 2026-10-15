@@ -119,6 +119,7 @@ export function EncomendaCard({
               size="sm"
               variant="outline"
               className="h-8"
+              nativeButton={false}
               render={<a href={linkWhatsApp(e)} target="_blank" rel="noopener noreferrer" />}
             >
               <MessageCircle className="size-3.5" />

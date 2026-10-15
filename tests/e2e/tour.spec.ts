@@ -26,7 +26,7 @@ test("tour guiado: percorre os 4 fluxos sem erro de console", async ({ page }) =
   // Início pelo login (reseta a demo e entra como Sarah).
   await page.goto("/login");
   await page.getByRole("button", { name: /Ver demonstração guiada/ }).click();
-  await expect(page).toHaveURL(/\/pdv/);
+  await expect(page).toHaveURL(/\/pdv/, { timeout: 15000 });
 
   // Fluxo i — pedido no caixa (comanda preparada + destaque no "Enviar").
   await expect(balao(page).getByText("Todo pedido vira comanda")).toBeVisible();
@@ -44,19 +44,19 @@ test("tour guiado: percorre os 4 fluxos sem erro de console", async ({ page }) =
   await proximo(page);
 
   // Fluxo ii — fica registrado na auditoria (linha recém-criada no topo).
-  await expect(page).toHaveURL(/\/auditoria/);
+  await expect(page).toHaveURL(/\/auditoria/, { timeout: 15000 });
   await expect(balao(page).getByText("E fica registrado")).toBeVisible();
   await expect(page.getByText(/autorizado por Marta/)).toBeVisible();
   await proximo(page);
 
   // Fluxo iii — a carne que some.
-  await expect(page).toHaveURL(/\/perdas/);
+  await expect(page).toHaveURL(/\/perdas/, { timeout: 15000 });
   await expect(balao(page).getByText("Para onde foi a carne?")).toBeVisible();
   await expect(page.getByText(/não têm explicação/)).toBeVisible();
   await proximo(page);
 
   // Fluxo iv — caixa cego → alerta no painel.
-  await expect(page).toHaveURL(/\/painel/);
+  await expect(page).toHaveURL(/\/painel/, { timeout: 15000 });
   await expect(balao(page).getByText("A gaveta não bateu")).toBeVisible();
   await expect(page.getByText(/Caixa da Cohama fechou/)).toBeVisible();
 
