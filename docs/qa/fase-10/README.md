@@ -48,5 +48,5 @@ Evidências: `estoque-1280.png`, `estoque-390.png`, `estoque-extrato-1280.png`,
 `encomendas-1280.png`, `encomendas-390.png`, `cardapio-1280.png`,
 `configuracoes-390.png`, `configuracoes-390-b.png`.
 
-Também: `metadataBase` corrigido para `https://sarahdoces.vercel.app` (o domínio
+Também: `metadataBase` corrigido para `https://sarahdoces-loja.vercel.app` (o domínio
 antigo dava 404 e quebrava a URL da OG image).

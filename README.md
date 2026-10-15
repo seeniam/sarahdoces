@@ -7,7 +7,7 @@ memória, persistido no `localStorage` do navegador.
 
 > **Cada pedido registrado, cada grama de carne contada.**
 
-**Demonstração no ar:** https://sarahdoces.vercel.app
+**Demonstração no ar:** https://sarahdoces-loja.vercel.app
 
 ## Como rodar
 

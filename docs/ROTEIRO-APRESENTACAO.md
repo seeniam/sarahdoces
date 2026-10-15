@@ -1,7 +1,7 @@
 # Roteiro de apresentação — 5 minutos
 
 Guia para apresentar o protótipo à Sarah. Linguagem simples, sem termos técnicos.
-Abra no aparelho da apresentação (celular ou tablet) já em **https://sarahdoces.vercel.app**.
+Abra no aparelho da apresentação (celular ou tablet) já em **https://sarahdoces-loja.vercel.app**.
 Antes de começar, toque em **Resetar demonstração** (menu do usuário) para
 começar limpo.
 
